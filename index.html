@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>fit.Hive | Elite Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #050505; --card: #111; --neon: #ff003c; --text: #f0f0f0; --dim: #888; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { width: 220px; background: #000; border-right: 1px solid var(--neon); padding: 25px; display: flex; flex-direction: column; }
+        .logo { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; margin-bottom: 40px; color: #fff; text-align: center; }
+        .logo span { color: var(--neon); }
+        .nav-item { padding: 12px 15px; margin-bottom: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 0.85rem; }
+        .nav-item.active { border-color: var(--neon); color: var(--neon); background: rgba(255, 0, 60, 0.05); }
+        .nav-item:hover { background: rgba(255, 0, 60, 0.1); }
+
+        .main { flex: 1; padding: 25px; overflow-y: auto; }
+        .dashboard-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+        .dash-card { background: var(--card); border: 1px solid #222; padding: 15px; border-radius: 10px; border-top: 3px solid var(--neon); }
+        .dash-label { font-size: 0.65rem; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
+        .dash-val { font-family: 'Orbitron'; font-size: 1.2rem; margin-top: 5px; color: #fff; }
+
+        .controls { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
+        input, select { background: var(--card); border: 1px solid #333; color: white; padding: 10px; border-radius: 6px; outline: none; font-size: 0.8rem; transition: border-color 0.3s; }
+        input:focus, select:focus { border-color: var(--neon); }
+
+        .table-wrapper { background: var(--card); border-radius: 12px; border: 1px solid #222; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
+        th { background: #0a0a0a; padding: 12px; text-align: left; color: var(--neon); font-size: 0.65rem; text-transform: uppercase; border-bottom: 2px solid #222; }
+        td { padding: 10px; border-bottom: 1px solid #1a1a1a; font-size: 0.8rem; color: #ccc; vertical-align: middle; }
+        
+        .status-pill { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .status-paid { background: #00ff00; color: #000; }
+        .status-pending { background: #f1c40f; color: #000; }
+
+        .days-pill { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .days-expired { background: #ff003c; color: #fff; }
+        .days-warning { background: #f39c12; color: #000; }
+        .days-ok { background: #2ecc71; color: #000; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+        .modal.show { display: flex; opacity: 1; }
+        .modal-content { background: #0a0a0a; width: 95%; max-width: 1300px; height: 90vh; padding: 25px; border: 1px solid var(--neon); border-radius: 12px; overflow-y: auto; }
+        
+        .profile-layout { display: grid; grid-template-columns: 1fr 380px; gap: 25px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .field-box { border-bottom: 1px solid #222; padding: 8px 0; }
+        .label-text { color: var(--neon); font-size: 0.55rem; text-transform: uppercase; display: block; margin-bottom: 3px; }
+        .val-text { color: #fff; font-size: 0.85rem; font-weight: 500; }
+        
+        .profile-img-large { width: 120px; height: 120px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; background: #222; }
+        .btn-add { background: var(--neon); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; transition: transform 0.2s; }
+        .btn-add:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">FIT<span>.HIVE</span></div>
+    <div class="nav-item active" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
+    <div class="nav-item" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
+    <button class="btn-add" style="margin-top:auto" onclick="openAddModal()">+ New Client</button>
+</div>
+
+<div class="main">
+    <div class="dashboard-row">
+        <div class="dash-card" style="border-top-color:#00ff00"><div class="dash-label">Total Active</div><div id="statPaid" class="dash-val">0</div></div>
+        <div class="dash-card" style="border-top-color:#f1c40f"><div class="dash-label">Expiring Today</div><div id="statExpToday" class="dash-val">0</div></div>
+        <div class="dash-card" style="border-top-color:#ff003c"><div class="dash-label">Expired</div><div id="statOverdue" class="dash-val">0</div></div>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="filterTable()">
+        <select id="statusFilter" onchange="filterTable()">
+            <option value="All">All Status</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+        </select>
+        <select id="expiryFilter" onchange="filterTable()">
+            <option value="All">All Dates</option>
+            <option value="Today">Expiring Today</option>
+            <option value="7Days">Expiring 7 Days</option>
+            <option value="Expired">Already Expired</option>
+        </select>
+        <select id="activeFilter" onchange="filterTable()">
+            <option value="All">All Clients</option>
+            <option value="Active">Active Clients</option>
+        </select>
+        <button class="btn-add" onclick="loadTab(currentSheet)" style="padding: 8px 12px; font-size: 0.7rem;">Refresh</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead><tr id="tableHead"></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content" id="reportArea">
+        <div id="profileHeader" style="display:flex; align-items:center; gap:25px; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #222;"></div>
+        <div class="profile-layout">
+            <div class="info-side">
+                <form id="clientForm"><div class="form-grid" id="formInputs"></div></form>
+                <div id="modalFooter" style="margin-top:20px; display:flex; gap:10px;"></div>
+            </div>
+            <div class="stats-side" id="progressSide">
+                <div style="background:#0e0e0e; padding:15px; border-radius:12px; border:1px solid #222; margin-bottom:15px;">
+                    <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.7rem; margin:0 0 10px 0;">WEIGHT JOURNEY (KG)</h3>
+                    <div style="height:180px;"><canvas id="weightChart"></canvas></div>
+                </div>
+                <div id="measurementsContainer" style="background:#0e0e0e; padding:15px; border-radius:12px; border:1px solid #222; margin-bottom:15px; display:none;">
+                    <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.7rem; margin:0 0 10px 0;">BODY MEASUREMENTS (CM)</h3>
+                    <div style="height:180px;"><canvas id="measurementsChart"></canvas></div>
+                </div>
+                <div id="metricBox" style="background:#0e0e0e; padding:15px; border-radius:12px; border:1px solid #222;">
+                    <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.7rem; margin:0 0 10px 0;">BODY METRICS</h3>
+                    <div id="metricDisplay"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxaqt_NAG1MMXWO4_aTra17HrHXPROZ5hZ3mih3rqrmT8ViZBdGJS7xdtzCwYmxeXSGvQ/exec";
+    let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null, weightChart = null, measurementsChart = null;
+
+    const headers = {
+        "Regular Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight"],
+        "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight", "Height", "Body Fat %", "Shoulders", "Chest", "Waist", "Hips", "Right Thigh", "Left Thigh", "Left Bicep", "Right Bicep", "Neck", "Resting Heart Rate", "Performance Notes"]
+    };
+
+    function getInputElement(h, value) {
+        const k = h.replace(/[^a-zA-Z0-9]/g, '');
+        if (h === "Join Date" || h === "Expiry Date") {
+            return `<input type="date" name="${k}" value="${value || ''}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;">`;
+        } else if (h === "Payment Status") {
+            return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Paid" ${value === 'Paid' ? 'selected' : ''}>Paid</option><option value="Pending" ${value === 'Pending' ? 'selected' : ''}>Pending</option></select>`;
+        } else if (h === "Gender") {
+            return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Male" ${value === 'Male' ? 'selected' : ''}>Male</option><option value="Female" ${value === 'Female' ? 'selected' : ''}>Female</option><option value="Other" ${value === 'Other' ? 'selected' : ''}>Other</option></select>`;
+        } else if (h === "Payment Method") {
+            return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Cash" ${value === 'Cash' ? 'selected' : ''}>Cash</option><option value="Card" ${value === 'Card' ? 'selected' : ''}>Card</option><option value="Online" ${value === 'Online' ? 'selected' : ''}>Online</option></select>`;
+        } else {
+            return `<input type="text" name="${k}" value="${value || ''}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;">`;
+        }
+    }
+
+    // IMPROVED PHOTO FIXER
+    function fixImageUrl(url) {
+        if (!url || typeof url !== 'string' || url.length < 5) return 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+        
+        // Handle Google Drive
+        if (url.includes('drive.google.com')) {
+            const id = url.match(/[-\w]{25,}/);
+            return id ? `https://drive.google.com/uc?export=view&id=${id[0]}` : url;
+        }
+        
+        // Google Photos Warning
+        if (url.includes('photos.app.goo.gl')) {
+            console.warn("Google Photos links are not direct images. Use Google Drive instead.");
+            return 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+        }
+        
+        return url;
+    }
+
+    function toISODate(dStr) {
+        if(!dStr) return null;
+        const d = new Date(dStr);
+        if(isNaN(d.getTime())) return null;
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    async function loadTab(sheet, el) {
+        currentSheet = sheet;
+        if(el) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
+        const res = await fetch(`${API_URL}?sheet=${currentSheet}`);
+        masterData = await res.json();
+        updateDashboard();
+        filterTable();
+    }
+
+    function updateDashboard() {
+        const todayStr = toISODate(new Date());
+        let paid = 0, expToday = 0, overdue = 0;
+        masterData.forEach(c => {
+            if((c.PaymentStatus || "").toLowerCase() === 'paid') paid++;
+            const expStr = toISODate(c.ExpiryDate);
+            if(expStr) {
+                if(expStr === todayStr) expToday++;
+                else if(expStr < todayStr) overdue++;
+            }
+        });
+        document.getElementById('statPaid').innerText = paid;
+        document.getElementById('statExpToday').innerText = expToday;
+        document.getElementById('statOverdue').innerText = overdue;
+    }
+
+    function filterTable() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const statusSel = document.getElementById('statusFilter').value;
+        const expirySel = document.getElementById('expiryFilter').value;
+        const activeSel = document.getElementById('activeFilter').value;
+        const today = new Date(); today.setHours(0,0,0,0);
+        const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        filteredData = masterData.filter(c => {
+            const matchName = (c.FullName || "").toLowerCase().includes(query);
+            const matchStatus = (statusSel === "All") || (c.PaymentStatus === statusSel);
+            const exp = new Date(c.ExpiryDate); exp.setHours(0,0,0,0);
+            
+            let matchExpiry = true;
+            if(expirySel === "Today") matchExpiry = toISODate(exp) === toISODate(today);
+            else if(expirySel === "Expired") matchExpiry = exp < today;
+            else if(expirySel === "7Days") matchExpiry = exp > today && exp <= nextWeek;
+
+            let matchActive = true;
+            if(activeSel === "Active") {
+                matchActive = (c.PaymentStatus === 'Paid') && (exp >= today);
+            }
+
+            return matchName && matchStatus && matchExpiry && matchActive;
+        });
+        renderTable(filteredData);
+    }
+
+    function renderTable(data) {
+        const today = new Date(); today.setHours(0,0,0,0);
+        const displayKeys = currentSheet === "PT Tracker" 
+            ? ["Client ID", "Photo Link", "Full Name", "Training Slot", "Expiry Date", "Days Left", "Payment Status"]
+            : ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Expiry Date", "Days Left", "Payment Status"];
+
+        document.getElementById('tableHead').innerHTML = displayKeys.map(h => `<th>${h}</th>`).join('');
+        document.getElementById('tableBody').innerHTML = data.map((row, idx) => {
+            const exp = new Date(row.ExpiryDate); exp.setHours(0,0,0,0);
+            const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+            
+            let daysHtml = "";
+            if (diff < 0) daysHtml = `<span class="days-pill days-expired">Expired</span>`;
+            else if (diff === 0) daysHtml = `<span class="days-pill days-warning">Ends Today</span>`;
+            else daysHtml = `<span class="days-pill days-ok">${diff} Days Left</span>`;
+
+            return `<tr onclick="viewDetails(${idx})">
+                ${displayKeys.map(k => {
+                    if(k === "Days Left") return `<td>${daysHtml}</td>`;
+                    const key = k.replace(/[^a-zA-Z0-9]/g, '');
+                    const val = row[key] || '-';
+                    if(k === "Photo Link") return `<td><img src="${fixImageUrl(val)}" style="width:35px;height:35px;border-radius:50%;border:1px solid var(--neon);"></td>`;
+                    if(k === "Payment Status") return `<td><span class="status-pill status-${val.toLowerCase()}">${val}</span></td>`;
+                    return `<td>${val}</td>`;
+                }).join('')}
+            </tr>`;
+        }).join('');
+    }
+
+    function viewDetails(idx) {
+        const c = filteredData[idx];
+        currentEditRow = c.rowNumber;
+        document.getElementById('profileHeader').innerHTML = `
+            <img src="${fixImageUrl(c.PhotoLink)}" class="profile-img-large">
+            <div><h1 style="margin:0; font-family:Orbitron;">${c.FullName}</h1>
+            <span>ID: ${c.ClientID} ${c.TrainingSlot ? '| Slot: '+c.TrainingSlot : ''}</span></div>`;
+
+        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+            const k = h.replace(/[^a-zA-Z0-9]/g, '');
+            return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${c[k] || '-'}</div></div>`;
+        }).join('');
+
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit Client</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+        renderProgress(c);
+        toggleModal(true);
+    }
+
+    function renderProgress(c) {
+        const s = parseFloat(c.StartWeight), curr = parseFloat(c.CurrentWeight), t = parseFloat(c.TargetWeight);
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        if(weightChart) weightChart.destroy();
+        weightChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: ['Start', 'Current', 'Target'], datasets: [{ data: [s, curr, t], borderColor: '#ff003c', backgroundColor: 'rgba(255, 0, 60, 0.1)', fill: true, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Body Measurements Chart for PT
+        const measurementsContainer = document.getElementById('measurementsContainer');
+        if(currentSheet === "PT Tracker" && (c.Shoulders || c.Chest || c.Waist || c.Hips || c.RightThigh || c.LeftThigh || c.LeftBicep || c.RightBicep || c.Neck)) {
+            measurementsContainer.style.display = 'block';
+            const labels = [];
+            const data = [];
+            const measurements = ['Shoulders', 'Chest', 'Waist', 'Hips', 'RightThigh', 'LeftThigh', 'LeftBicep', 'RightBicep', 'Neck'];
+            measurements.forEach(m => {
+                const val = parseFloat(c[m.replace(/([A-Z])/g, ' $1').trim()]); // Convert camelCase to space
+                if(val) {
+                    labels.push(m.replace(/([A-Z])/g, ' $1').trim());
+                    data.push(val);
+                }
+            });
+            const mCtx = document.getElementById('measurementsChart').getContext('2d');
+            if(measurementsChart) measurementsChart.destroy();
+            measurementsChart = new Chart(mCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Measurements (cm)',
+                        data: data,
+                        backgroundColor: '#ff003c',
+                        borderColor: '#ff003c',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#ccc' } },
+                        x: { ticks: { color: '#ccc' } }
+                    }
+                }
+            });
+        } else {
+            measurementsContainer.style.display = 'none';
+        }
+
+        const h = parseFloat(c.Height);
+        let metrics = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">`;
+        if(curr && h) metrics += `<div><span class="label-text">BMI</span><div class="val-text">${(curr/((h/100)**2)).toFixed(1)}</div></div>`;
+        if(c.BodyFat) metrics += `<div><span class="label-text">Body Fat</span><div class="val-text">${c.BodyFat}%</div></div>`;
+        metrics += `</div>`;
+        document.getElementById('metricDisplay').innerHTML = metrics;
+        document.getElementById('metricBox').style.display = currentSheet === "PT Tracker" ? 'block' : 'none';
+    }
+
+    function enableEdit(idx) {
+        const c = filteredData[idx];
+        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+            const k = h.replace(/[^a-zA-Z0-9]/g, '');
+            return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
+        }).join('');
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('edit')">Save Changes</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+    }
+
+    async function submitData(action) {
+        if(!confirm("Update database?")) return;
+        const formData = new FormData(document.getElementById('clientForm'));
+        const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
+        const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
+        if(action === 'edit') params.append("rowNumber", currentEditRow);
+        toggleModal(false);
+        await fetch(`${API_URL}?${params.toString()}`, { method: 'POST' });
+        loadTab(currentSheet);
+    }
+
+    function openAddModal() {
+        document.getElementById('profileHeader').innerHTML = `<h1>ADD CLIENT</h1>`;
+        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`).join('');
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Register</button>`;
+        toggleModal(true);
+    }
+
+    function toggleModal(s) { document.getElementById('modal').classList.toggle('show', s); }
+    window.onload = () => loadTab('Regular Tracker');
+</script>
+</body>
+</html>
