@@ -40,12 +40,15 @@
         .days-warning { background: #f39c12; color: #000; }
         .days-ok { background: #2ecc71; color: #000; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: flex-start; justify-content: center; opacity: 0; transition: opacity 0.3s; overflow-y: auto; padding: 20px 0; }
         .modal.show { display: flex; opacity: 1; }
-        .modal-content { background: #0a0a0a; width: 95%; max-width: 1300px; height: 90vh; padding: 25px; border: 1px solid var(--neon); border-radius: 12px; overflow-y: auto; }
+        .modal-content { background: #0a0a0a; width: 95%; max-width: none; max-height: none; padding: 20px; border: 1px solid var(--neon); border-radius: 12px; overflow-x: auto; }
         
-        .profile-layout { display: grid; grid-template-columns: 1fr 380px; gap: 25px; }
+        .profile-layout { display: grid; grid-template-columns: 1fr; gap: 25px; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+        .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .chart-box { background: #0e0e0e; padding: 10px; border-radius: 8px; border: 1px solid #222; }
+        .chart-box h3 { color: var(--neon); font-family: Orbitron; font-size: 0.6rem; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
         .field-box { border-bottom: 1px solid #222; padding: 8px 0; }
         .label-text { color: var(--neon); font-size: 0.55rem; text-transform: uppercase; display: block; margin-bottom: 3px; }
         .val-text { color: #fff; font-size: 0.85rem; font-weight: 500; }
@@ -53,9 +56,44 @@
         .profile-img-large { width: 120px; height: 120px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; background: #222; }
         .btn-add { background: var(--neon); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; transition: transform 0.2s; }
         .btn-add:hover { transform: scale(1.05); }
+        
+        .photo-upload-box { background: #181818; border: 1px dashed #333; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: border-color 0.3s; }
+        .photo-upload-box:hover { border-color: var(--neon); }
+        .photo-preview { width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; margin: 10px auto; display: block; }
+        .upload-label { color: var(--dim); font-size: 0.7rem; margin-top: 5px; }
+        
+        /* Custom Calendar Styling */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="%23ff003c" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>');
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+        }
+        input[type="date"]::-webkit-datetime-edit-text,
+        input[type="date"]::-webkit-datetime-edit-month-field,
+        input[type="date"]::-webkit-datetime-edit-day-field,
+        input[type="date"]::-webkit-datetime-edit-year-field {
+            color: #fff;
+        }
+        
+        /* Loading Overlay */
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 9999; align-items: center; justify-content: center; }
+        .loading-overlay.show { display: flex; }
+        .loading-content { text-align: center; }
+        .spinner { border: 4px solid #222; border-top: 4px solid var(--neon); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: var(--neon); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">LOADING...</div>
+    </div>
+</div>
 
 <div class="sidebar">
     <div class="logo">FIT<span>.HIVE</span></div>
@@ -88,7 +126,7 @@
             <option value="All">All Clients</option>
             <option value="Active">Active Clients</option>
         </select>
-        <button class="btn-add" onclick="loadTab(currentSheet)" style="padding: 8px 12px; font-size: 0.7rem;">Refresh</button>
+        <button class="btn-add" onclick="resetFilters()" style="padding: 8px 12px; font-size: 0.7rem;">🔄 Reset Filters</button>
     </div>
 
     <div class="table-wrapper">
@@ -108,17 +146,59 @@
                 <div id="modalFooter" style="margin-top:20px; display:flex; gap:10px;"></div>
             </div>
             <div class="stats-side" id="progressSide">
-                <div style="background:#0e0e0e; padding:15px; border-radius:12px; border:1px solid #222; margin-bottom:15px;">
-                    <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.7rem; margin:0 0 10px 0;">WEIGHT JOURNEY (KG)</h3>
-                    <div style="height:180px;"><canvas id="weightChart"></canvas></div>
-                </div>
-                <div id="measurementsContainer" style="background:#0e0e0e; padding:15px; border-radius:12px; border:1px solid #222; margin-bottom:15px; display:none;">
-                    <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.7rem; margin:0 0 10px 0;">BODY MEASUREMENTS (CM)</h3>
-                    <div style="height:180px;"><canvas id="measurementsChart"></canvas></div>
-                </div>
-                <div id="metricBox" style="background:#0e0e0e; padding:15px; border-radius:12px; border:1px solid #222;">
-                    <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.7rem; margin:0 0 10px 0;">BODY METRICS</h3>
-                    <div id="metricDisplay"></div>
+                <div class="chart-grid">
+                    <div class="chart-box">
+                        <h3>Weight Progress</h3>
+                        <div style="height:140px;"><canvas id="weightChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>BMI Progress</h3>
+                        <div style="height:140px;"><canvas id="bmiChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Body Fat % Progress</h3>
+                        <div style="height:140px;"><canvas id="bodyFatChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Chest Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="chestChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Waist Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="waistChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Hips Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="hipsChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Shoulders Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="shouldersChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Neck Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="neckChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Upper Arm Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="upperArmChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Forearm Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="forearmChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Thigh Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="thighChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Calf Progress (cm)</h3>
+                        <div style="height:140px;"><canvas id="calfChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>Resting Heart Rate (bpm)</h3>
+                        <div style="height:140px;"><canvas id="heartRateChart"></canvas></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -126,18 +206,63 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxaqt_NAG1MMXWO4_aTra17HrHXPROZ5hZ3mih3rqrmT8ViZBdGJS7xdtzCwYmxeXSGvQ/exec";
-    let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null, weightChart = null, measurementsChart = null;
+    const API_URL = "https://script.google.com/macros/s/AKfycbxfXnZ2Z_zKFitwnJE4Vx3mNSGMBDPCNvDxYGCy1LLz4SahJmY5g6vN9-VIZGNBJhV2Zw/exec";
+    let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null;
+    let weightChart = null, bmiChart = null, bodyFatChart = null, chestChart = null, waistChart = null, hipsChart = null;
+    let shouldersChart = null, neckChart = null, upperArmChart = null, forearmChart = null, thighChart = null, calfChart = null, heartRateChart = null;
+
+    // Loading Functions
+    function showLoading(message = 'LOADING...') {
+        document.getElementById('loadingText').innerText = message;
+        document.getElementById('loadingOverlay').classList.add('show');
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.remove('show');
+    }
+
+    // Loading Functions
+    function showLoading(message = 'LOADING...') {
+        document.getElementById('loadingText').innerText = message;
+        document.getElementById('loadingOverlay').classList.add('show');
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.remove('show');
+    }
 
     const headers = {
         "Regular Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight"],
-        "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight", "Height", "Body Fat %", "Shoulders", "Chest", "Waist", "Hips", "Right Thigh", "Left Thigh", "Left Bicep", "Right Bicep", "Neck", "Resting Heart Rate", "Performance Notes"]
+        "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", 
+        "Weight Day 1", "Weight Week 1", "Weight Week 4", "Weight Week 8", "Weight Week 12",
+        "Height", 
+        "BMI Day 1", "BMI Week 1", "BMI Week 4", "BMI Week 8", "BMI Week 12",
+        "Body Fat % Day 1", "Body Fat % Week 1", "Body Fat % Week 4", "Body Fat % Week 8", "Body Fat % Week 12",
+        "Chest Day 1", "Chest Week 1", "Chest Week 4", "Chest Week 8", "Chest Week 12",
+        "Waist Day 1", "Waist Week 1", "Waist Week 4", "Waist Week 8", "Waist Week 12",
+        "Hips Day 1", "Hips Week 1", "Hips Week 4", "Hips Week 8", "Hips Week 12",
+        "Shoulders Day 1", "Shoulders Week 1", "Shoulders Week 4", "Shoulders Week 8", "Shoulders Week 12",
+        "Neck Day 1", "Neck Week 1", "Neck Week 4", "Neck Week 8", "Neck Week 12",
+        "Upper Arm Day 1", "Upper Arm Week 1", "Upper Arm Week 4", "Upper Arm Week 8", "Upper Arm Week 12",
+        "Forearm Day 1", "Forearm Week 1", "Forearm Week 4", "Forearm Week 8", "Forearm Week 12",
+        "Thigh Day 1", "Thigh Week 1", "Thigh Week 4", "Thigh Week 8", "Thigh Week 12",
+        "Calf Day 1", "Calf Week 1", "Calf Week 4", "Calf Week 8", "Calf Week 12",
+        "Resting Heart Rate Day 1", "Resting Heart Rate Week 1", "Resting Heart Rate Week 4", "Resting Heart Rate Week 8", "Resting Heart Rate Week 12",
+        "Performance Notes"]
     };
 
     function getInputElement(h, value) {
         const k = h.replace(/[^a-zA-Z0-9]/g, '');
-        if (h === "Join Date" || h === "Expiry Date") {
-            return `<input type="date" name="${k}" value="${value || ''}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;">`;
+        if (h === "Photo Link") {
+            return `<div class="photo-upload-box" onclick="document.getElementById('photoUpload').click()">
+                        <img id="photoPreview" src="${fixImageUrl(value)}" class="photo-preview" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'">
+                        <div class="upload-label" id="uploadLabel">Click to upload photo</div>
+                        <input type="file" id="photoUpload" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
+                        <input type="hidden" name="${k}" id="photoLinkInput" value="${value || ''}">
+                    </div>`;
+        } else if (h === "Join Date" || h === "Expiry Date") {
+            const dateValue = toISODate(value) || '';
+            return `<input type="date" name="${k}" value="${dateValue}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px; color-scheme: dark;">`;
         } else if (h === "Payment Status") {
             return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Paid" ${value === 'Paid' ? 'selected' : ''}>Paid</option><option value="Pending" ${value === 'Pending' ? 'selected' : ''}>Pending</option></select>`;
         } else if (h === "Gender") {
@@ -153,10 +278,15 @@
     function fixImageUrl(url) {
         if (!url || typeof url !== 'string' || url.length < 5) return 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
         
-        // Handle Google Drive
+        // If already a thumbnail URL, return as is
+        if (url.includes('drive.google.com/thumbnail')) {
+            return url;
+        }
+        
+        // Handle Google Drive - convert to thumbnail URL
         if (url.includes('drive.google.com')) {
             const id = url.match(/[-\w]{25,}/);
-            return id ? `https://drive.google.com/uc?export=view&id=${id[0]}` : url;
+            return id ? `https://drive.google.com/thumbnail?id=${id[0]}&sz=w400` : url;
         }
         
         // Google Photos Warning
@@ -176,12 +306,20 @@
     }
 
     async function loadTab(sheet, el) {
-        currentSheet = sheet;
-        if(el) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
-        const res = await fetch(`${API_URL}?sheet=${currentSheet}`);
-        masterData = await res.json();
-        updateDashboard();
-        filterTable();
+        showLoading(`LOADING ${sheet.toUpperCase()}...`);
+        try {
+            currentSheet = sheet;
+            if(el) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
+            const res = await fetch(`${API_URL}?sheet=${currentSheet}`);
+            masterData = await res.json();
+            updateDashboard();
+            filterTable();
+        } catch (error) {
+            console.error('Error loading data:', error);
+            alert('Failed to load data. Please try again.');
+        } finally {
+            hideLoading();
+        }
     }
 
     function updateDashboard() {
@@ -198,6 +336,14 @@
         document.getElementById('statPaid').innerText = paid;
         document.getElementById('statExpToday').innerText = expToday;
         document.getElementById('statOverdue').innerText = overdue;
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = 'All';
+        document.getElementById('expiryFilter').value = 'All';
+        document.getElementById('activeFilter').value = 'All';
+        filterTable();
     }
 
     function filterTable() {
@@ -267,100 +413,446 @@
 
         document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
             const k = h.replace(/[^a-zA-Z0-9]/g, '');
-            return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${c[k] || '-'}</div></div>`;
+            let displayValue = c[k] || '-';
+            
+            // Show friendly name for photo link
+            if (h === "Photo Link" && displayValue && displayValue !== '-') {
+                const clientName = c.FullName || 'Client';
+                displayValue = `${clientName.replace(/\s+/g, '_')}_photo.png`;
+            }
+            
+            return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${displayValue}</div></div>`;
         }).join('');
 
         document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit Client</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
-        renderProgress(c);
+        
+        // Only render progress charts for PT Tracker
+        if (currentSheet === "PT Tracker") {
+            document.getElementById('progressSide').style.display = 'block';
+            renderProgress(c);
+        } else {
+            document.getElementById('progressSide').style.display = 'none';
+        }
+        
         toggleModal(true);
     }
 
     function renderProgress(c) {
-        const s = parseFloat(c.StartWeight), curr = parseFloat(c.CurrentWeight), t = parseFloat(c.TargetWeight);
-        const ctx = document.getElementById('weightChart').getContext('2d');
-        if(weightChart) weightChart.destroy();
-        weightChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: ['Start', 'Current', 'Target'], datasets: [{ data: [s, curr, t], borderColor: '#ff003c', backgroundColor: 'rgba(255, 0, 60, 0.1)', fill: true, tension: 0.3 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-        });
-
-        // Body Measurements Chart for PT
-        const measurementsContainer = document.getElementById('measurementsContainer');
-        if(currentSheet === "PT Tracker" && (c.Shoulders || c.Chest || c.Waist || c.Hips || c.RightThigh || c.LeftThigh || c.LeftBicep || c.RightBicep || c.Neck)) {
-            measurementsContainer.style.display = 'block';
-            const labels = [];
-            const data = [];
-            const measurements = ['Shoulders', 'Chest', 'Waist', 'Hips', 'RightThigh', 'LeftThigh', 'LeftBicep', 'RightBicep', 'Neck'];
-            measurements.forEach(m => {
-                const val = parseFloat(c[m.replace(/([A-Z])/g, ' $1').trim()]); // Convert camelCase to space
-                if(val) {
-                    labels.push(m.replace(/([A-Z])/g, ' $1').trim());
-                    data.push(val);
-                }
-            });
-            const mCtx = document.getElementById('measurementsChart').getContext('2d');
-            if(measurementsChart) measurementsChart.destroy();
-            measurementsChart = new Chart(mCtx, {
-                type: 'bar',
+        const timePeriods = ['Day1', 'Week1', 'Week4', 'Week8', 'Week12'];
+        const labels = ['Day 1', 'Week 1', 'Week 4', 'Week 8', 'Week 12'];
+        
+        // Helper function to create chart with animations
+        const createChart = (canvasId, chartVar, label, dataKeys, color = '#ff003c', unit = '') => {
+            const data = dataKeys.map(key => parseFloat(c[key]) || null);
+            const hasData = data.some(val => val !== null);
+            
+            if (!hasData) return null;
+            
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (chartVar) chartVar.destroy();
+            
+            return new Chart(ctx, {
+                type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Measurements (cm)',
+                        label: label,
                         data: data,
-                        backgroundColor: '#ff003c',
-                        borderColor: '#ff003c',
-                        borderWidth: 1
+                        borderColor: color,
+                        backgroundColor: color.replace(')', ', 0.15)').replace('rgb', 'rgba'),
+                        fill: true,
+                        tension: 0.4,
+                        spanGaps: true,
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: color,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: color,
+                        pointHoverBorderWidth: 3
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutQuart',
+                        delay: (context) => {
+                            let delay = 0;
+                            if (context.type === 'data' && context.mode === 'default') {
+                                delay = context.dataIndex * 150;
+                            }
+                            return delay;
+                        }
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: color,
+                            bodyColor: '#fff',
+                            borderColor: color,
+                            borderWidth: 2,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return label + ': ' + context.parsed.y.toFixed(2) + ' ' + unit;
+                                }
+                            }
+                        }
+                    },
                     scales: {
-                        y: { beginAtZero: true, ticks: { color: '#ccc' } },
-                        x: { ticks: { color: '#ccc' } }
+                        y: { 
+                            beginAtZero: false,
+                            ticks: { 
+                                color: '#ccc',
+                                font: { size: 11 },
+                                callback: function(value) {
+                                    return value.toFixed(1) + ' ' + unit;
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            }
+                        },
+                        x: { 
+                            ticks: { 
+                                color: '#ccc',
+                                font: { size: 11, weight: 'bold' }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
                     }
                 }
             });
-        } else {
-            measurementsContainer.style.display = 'none';
-        }
-
-        const h = parseFloat(c.Height);
-        let metrics = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">`;
-        if(curr && h) metrics += `<div><span class="label-text">BMI</span><div class="val-text">${(curr/((h/100)**2)).toFixed(1)}</div></div>`;
-        if(c.BodyFat) metrics += `<div><span class="label-text">Body Fat</span><div class="val-text">${c.BodyFat}%</div></div>`;
-        metrics += `</div>`;
-        document.getElementById('metricDisplay').innerHTML = metrics;
-        document.getElementById('metricBox').style.display = currentSheet === "PT Tracker" ? 'block' : 'none';
+        };
+        
+        // Weight Chart
+        weightChart = createChart('weightChart', weightChart, 'Weight', 
+            ['WeightDay1', 'WeightWeek1', 'WeightWeek4', 'WeightWeek8', 'WeightWeek12'], '#ff003c', 'kg');
+        
+        // BMI Chart
+        bmiChart = createChart('bmiChart', bmiChart, 'BMI',
+            ['BMIDay1', 'BMIWeek1', 'BMIWeek4', 'BMIWeek8', 'BMIWeek12'], '#00d4ff', '');
+        
+        // Body Fat Chart
+        bodyFatChart = createChart('bodyFatChart', bodyFatChart, 'Body Fat',
+            ['BodyFatDay1', 'BodyFatWeek1', 'BodyFatWeek4', 'BodyFatWeek8', 'BodyFatWeek12'], '#ffa500', '%');
+        
+        // Chest Chart
+        chestChart = createChart('chestChart', chestChart, 'Chest',
+            ['ChestDay1', 'ChestWeek1', 'ChestWeek4', 'ChestWeek8', 'ChestWeek12'], '#00ff00', 'cm');
+        
+        // Waist Chart
+        waistChart = createChart('waistChart', waistChart, 'Waist',
+            ['WaistDay1', 'WaistWeek1', 'WaistWeek4', 'WaistWeek8', 'WaistWeek12'], '#ff00ff', 'cm');
+        
+        // Hips Chart
+        hipsChart = createChart('hipsChart', hipsChart, 'Hips',
+            ['HipsDay1', 'HipsWeek1', 'HipsWeek4', 'HipsWeek8', 'HipsWeek12'], '#ffff00', 'cm');
+        
+        // Shoulders Chart
+        shouldersChart = createChart('shouldersChart', shouldersChart, 'Shoulders',
+            ['ShouldersDay1', 'ShouldersWeek1', 'ShouldersWeek4', 'ShouldersWeek8', 'ShouldersWeek12'], '#00ffff', 'cm');
+        
+        // Neck Chart
+        neckChart = createChart('neckChart', neckChart, 'Neck',
+            ['NeckDay1', 'NeckWeek1', 'NeckWeek4', 'NeckWeek8', 'NeckWeek12'], '#ff6600', 'cm');
+        
+        // Upper Arm Chart
+        upperArmChart = createChart('upperArmChart', upperArmChart, 'Upper Arm',
+            ['UpperArmDay1', 'UpperArmWeek1', 'UpperArmWeek4', 'UpperArmWeek8', 'UpperArmWeek12'], '#9900ff', 'cm');
+        
+        // Forearm Chart
+        forearmChart = createChart('forearmChart', forearmChart, 'Forearm',
+            ['ForearmDay1', 'ForearmWeek1', 'ForearmWeek4', 'ForearmWeek8', 'ForearmWeek12'], '#00ff99', 'cm');
+        
+        // Thigh Chart
+        thighChart = createChart('thighChart', thighChart, 'Thigh',
+            ['ThighDay1', 'ThighWeek1', 'ThighWeek4', 'ThighWeek8', 'ThighWeek12'], '#ff0099', 'cm');
+        
+        // Calf Chart
+        calfChart = createChart('calfChart', calfChart, 'Calf',
+            ['CalfDay1', 'CalfWeek1', 'CalfWeek4', 'CalfWeek8', 'CalfWeek12'], '#99ff00', 'cm');
+        
+        // Heart Rate Chart
+        heartRateChart = createChart('heartRateChart', heartRateChart, 'Heart Rate',
+            ['RestingHeartRateDay1', 'RestingHeartRateWeek1', 'RestingHeartRateWeek4', 'RestingHeartRateWeek8', 'RestingHeartRateWeek12'], '#ff3366', 'bpm');
     }
 
     function enableEdit(idx) {
         const c = filteredData[idx];
-        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
-            const k = h.replace(/[^a-zA-Z0-9]/g, '');
-            return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-        }).join('');
+        
+        if (currentSheet === "PT Tracker") {
+            // Group PT measurements by time period in table format
+            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
+            const measurements = [
+                {name: "Weight", unit: "kg"},
+                {name: "BMI", unit: ""},
+                {name: "Body Fat %", unit: "%"},
+                {name: "Chest", unit: "cm"},
+                {name: "Waist", unit: "cm"},
+                {name: "Hips", unit: "cm"},
+                {name: "Shoulders", unit: "cm"},
+                {name: "Neck", unit: "cm"},
+                {name: "Upper Arm", unit: "cm"},
+                {name: "Forearm", unit: "cm"},
+                {name: "Thigh", unit: "cm"},
+                {name: "Calf", unit: "cm"},
+                {name: "Resting Heart Rate", unit: "bpm"}
+            ];
+            const timePeriods = ["Day 1", "Week 1", "Week 4", "Week 8", "Week 12"];
+            
+            let html = '<div style="display:grid; grid-template-columns: 1fr; gap:20px;">';
+            
+            // Basic Info Section
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
+            basicFields.forEach(h => {
+                const k = h.replace(/[^a-zA-Z0-9]/g, '');
+                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
+            });
+            html += '</div></div>';
+            
+            // Height (single field)
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
+            html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", c.Height)}</div></div>`;
+            
+            // Progress Tracking Table
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
+            html += '<table style="width:100%; border-collapse:collapse; background:#0a0a0a; border:1px solid #222; table-layout: auto; min-width: 800px;">';
+            
+            // Table Header
+            html += '<thead><tr style="background:#000; border-bottom:2px solid var(--neon);">';
+            html += '<th style="padding:6px 4px; text-align:left; color:var(--neon); font-size:0.55rem; text-transform:uppercase; border-right:1px solid #222; white-space:nowrap;">Measurement</th>';
+            timePeriods.forEach(period => {
+                html += `<th style="padding:6px 4px; text-align:center; color:var(--neon); font-size:0.55rem; text-transform:uppercase; border-right:1px solid #222; white-space:nowrap;">${period}</th>`;
+            });
+            html += '</tr></thead>';
+            
+            // Table Body
+            html += '<tbody>';
+            measurements.forEach((m, idx) => {
+                html += `<tr style="border-bottom:1px solid #222; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">`;
+                html += `<td style="padding:6px 4px; color:#fff; font-size:0.65rem; border-right:1px solid #222; white-space:nowrap;">${m.name} ${m.unit ? '(' + m.unit + ')' : ''}</td>`;
+                
+                timePeriods.forEach(period => {
+                    const fieldName = `${m.name} ${period}`;
+                    const k = fieldName.replace(/[^a-zA-Z0-9]/g, '');
+                    html += `<td style="padding:3px; border-right:1px solid #222;"><input type="text" name="${k}" value="${c[k] || ''}" style="width:70px; min-width:70px; border:none; background:#181818; color:#fff; padding:4px; border-radius:3px; text-align:center; font-size:0.7rem;"></td>`;
+                });
+                
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            
+            // Performance Notes
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Notes</h3>';
+            html += `<div class="field-box"><label class="label-text">Performance Notes</label>${getInputElement("Performance Notes", c.PerformanceNotes)}</div></div>`;
+            
+            html += '</div>';
+            document.getElementById('formInputs').innerHTML = html;
+        } else {
+            // Regular Tracker - standard grid layout
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+                const k = h.replace(/[^a-zA-Z0-9]/g, '');
+                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
+            }).join('');
+        }
+        
         document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('edit')">Save Changes</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
     }
 
     async function submitData(action) {
         if(!confirm("Update database?")) return;
-        const formData = new FormData(document.getElementById('clientForm'));
-        const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
-        const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
-        if(action === 'edit') params.append("rowNumber", currentEditRow);
-        toggleModal(false);
-        await fetch(`${API_URL}?${params.toString()}`, { method: 'POST' });
-        loadTab(currentSheet);
+        
+        showLoading(action === 'add' ? 'ADDING CLIENT...' : 'UPDATING CLIENT...');
+        
+        try {
+            const formData = new FormData(document.getElementById('clientForm'));
+            const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
+            const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
+            if(action === 'edit') params.append("rowNumber", currentEditRow);
+            
+            toggleModal(false);
+            
+            await fetch(`${API_URL}?${params.toString()}`, { method: 'POST' });
+            
+            // Show success message briefly
+            showLoading('CHANGES SAVED! REFRESHING...');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            await loadTab(currentSheet);
+        } catch (error) {
+            console.error('Error saving data:', error);
+            alert('Failed to save changes. Please try again.');
+            hideLoading();
+        }
     }
 
     function openAddModal() {
         document.getElementById('profileHeader').innerHTML = `<h1>ADD CLIENT</h1>`;
-        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`).join('');
+        
+        if (currentSheet === "PT Tracker") {
+            // Group PT measurements by time period in table format
+            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
+            const measurements = [
+                {name: "Weight", unit: "kg"},
+                {name: "BMI", unit: ""},
+                {name: "Body Fat %", unit: "%"},
+                {name: "Chest", unit: "cm"},
+                {name: "Waist", unit: "cm"},
+                {name: "Hips", unit: "cm"},
+                {name: "Shoulders", unit: "cm"},
+                {name: "Neck", unit: "cm"},
+                {name: "Upper Arm", unit: "cm"},
+                {name: "Forearm", unit: "cm"},
+                {name: "Thigh", unit: "cm"},
+                {name: "Calf", unit: "cm"},
+                {name: "Resting Heart Rate", unit: "bpm"}
+            ];
+            const timePeriods = ["Day 1", "Week 1", "Week 4", "Week 8", "Week 12"];
+            
+            let html = '<div style="display:grid; grid-template-columns: 1fr; gap:20px;">';
+            
+            // Basic Info Section
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
+            basicFields.forEach(h => {
+                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`;
+            });
+            html += '</div></div>';
+            
+            // Height (single field)
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
+            html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", '')}</div></div>`;
+            
+            // Progress Tracking Table
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
+            html += '<div style="overflow-x: auto;"><table style="width:100%; border-collapse:collapse; background:#0a0a0a; border:1px solid #222;">';
+            
+            // Table Header
+            html += '<thead><tr style="background:#000; border-bottom:2px solid var(--neon);">';
+            html += '<th style="padding:12px; text-align:left; color:var(--neon); font-size:0.65rem; text-transform:uppercase; border-right:1px solid #222; position:sticky; left:0; background:#000;">Measurement</th>';
+            timePeriods.forEach(period => {
+                html += `<th style="padding:12px; text-align:center; color:var(--neon); font-size:0.65rem; text-transform:uppercase; border-right:1px solid #222;">${period}</th>`;
+            });
+            html += '</tr></thead>';
+            
+            // Table Body
+            html += '<tbody>';
+            measurements.forEach((m, idx) => {
+                html += `<tr style="border-bottom:1px solid #222; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">`;
+                html += `<td style="padding:10px; color:#fff; font-size:0.75rem; border-right:1px solid #222; position:sticky; left:0; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">${m.name} ${m.unit ? '(' + m.unit + ')' : ''}</td>`;
+                
+                timePeriods.forEach(period => {
+                    const fieldName = `${m.name} ${period}`;
+                    const k = fieldName.replace(/[^a-zA-Z0-9]/g, '');
+                    html += `<td style="padding:5px; border-right:1px solid #222;"><input type="text" name="${k}" value="" placeholder="-" style="width:100%; border:none; background:#181818; color:#fff; padding:6px; border-radius:4px; text-align:center;"></td>`;
+                });
+                
+                html += '</tr>';
+            });
+            html += '</tbody></table></div></div>';
+            
+            // Performance Notes
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Notes</h3>';
+            html += `<div class="field-box"><label class="label-text">Performance Notes</label>${getInputElement("Performance Notes", '')}</div></div>`;
+            
+            html += '</div>';
+            document.getElementById('formInputs').innerHTML = html;
+        } else {
+            // Regular Tracker - standard grid layout
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`).join('');
+        }
+        
         document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Register</button>`;
         toggleModal(true);
+    }
+
+    let uploadedPhotoData = null;
+
+    async function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload an image file');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size should be less than 5MB');
+            return;
+        }
+        
+        // Get references to elements
+        const uploadLabel = document.getElementById('uploadLabel');
+        const photoPreview = document.getElementById('photoPreview');
+        const photoLinkInput = document.getElementById('photoLinkInput');
+        
+        const originalText = uploadLabel.textContent;
+        uploadLabel.textContent = 'Uploading...';
+        uploadLabel.style.color = '#f1c40f';
+        
+        showLoading('UPLOADING PHOTO...');
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Data = e.target.result.split(',')[1];
+            const uploadData = {
+                action: 'uploadPhoto',
+                fileName: file.name,
+                mimeType: file.type,
+                data: base64Data
+            };
+            
+            // Show local preview immediately
+            photoPreview.src = e.target.result;
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(uploadData)
+                });
+                const result = await response.json();
+                
+                if (result.success && result.url) {
+                    // Update the hidden input with Google Drive URL
+                    photoLinkInput.value = result.url;
+                    // Update preview with actual Drive URL
+                    photoPreview.src = result.url;
+                    uploadLabel.textContent = '✓ Photo uploaded! Click to change';
+                    uploadLabel.style.color = '#00ff00';
+                    console.log('Photo URL saved:', result.url);
+                    hideLoading();
+                } else {
+                    uploadLabel.textContent = originalText;
+                    uploadLabel.style.color = '';
+                    alert('Upload failed: ' + (result.error || 'Unknown error'));
+                    photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                    hideLoading();
+                }
+            } catch (error) {
+                uploadLabel.textContent = originalText;
+                uploadLabel.style.color = '';
+                alert('Upload error: ' + error.message);
+                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                hideLoading();
+            }
+        };
+        reader.readAsDataURL(file);
     }
 
     function toggleModal(s) { document.getElementById('modal').classList.toggle('show', s); }
