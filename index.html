@@ -607,9 +607,15 @@
         heartRateChart = createChart('heartRateChart', heartRateChart, 'Heart Rate',
             ['RestingHeartRateDay1', 'RestingHeartRateWeek1', 'RestingHeartRateWeek4', 'RestingHeartRateWeek8', 'RestingHeartRateWeek12'], '#ff3366', 'bpm');
         
+        // Remove any existing progress photos section before adding new one
+        const existingPhotos = document.getElementById('progressPhotosSection');
+        if (existingPhotos) {
+            existingPhotos.remove();
+        }
+        
         // Add progress photos below charts
         const progressPhotosHTML = `
-            <div style="margin-top:20px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px;">
+            <div id="progressPhotosSection" style="margin-top:20px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px;">
                 <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.8rem; margin:0 0 15px 0; text-transform:uppercase; letter-spacing:1px;">📸 Progress Photos Timeline</h3>
                 <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;">
                     ${[
