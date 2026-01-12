@@ -248,17 +248,24 @@
         "Thigh Day 1", "Thigh Week 1", "Thigh Week 4", "Thigh Week 8", "Thigh Week 12",
         "Calf Day 1", "Calf Week 1", "Calf Week 4", "Calf Week 8", "Calf Week 12",
         "Resting Heart Rate Day 1", "Resting Heart Rate Week 1", "Resting Heart Rate Week 4", "Resting Heart Rate Week 8", "Resting Heart Rate Week 12",
-        "Performance Notes"]
+        "Performance Notes",
+        "Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"]
     };
 
     function getInputElement(h, value) {
         const k = h.replace(/[^a-zA-Z0-9]/g, '');
-        if (h === "Photo Link") {
-            return `<div class="photo-upload-box" onclick="document.getElementById('photoUpload').click()">
-                        <img id="photoPreview" src="${fixImageUrl(value)}" class="photo-preview" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'">
-                        <div class="upload-label" id="uploadLabel">Click to upload photo</div>
-                        <input type="file" id="photoUpload" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
-                        <input type="hidden" name="${k}" id="photoLinkInput" value="${value || ''}">
+        if (h === "Photo Link" || h.startsWith("Progress Photo")) {
+            const uploadId = h === "Photo Link" ? "photoUpload" : `progressPhoto${k}`;
+            const previewId = h === "Photo Link" ? "photoPreview" : `preview${k}`;
+            const labelId = h === "Photo Link" ? "uploadLabel" : `label${k}`;
+            const inputId = h === "Photo Link" ? "photoLinkInput" : `input${k}`;
+            const onchangeHandler = h === "Photo Link" ? "handlePhotoUpload(event)" : `handleProgressPhotoUpload(event, '${k}', '${previewId}', '${labelId}', '${inputId}')`;
+            
+            return `<div class="photo-upload-box" onclick="document.getElementById('${uploadId}').click()">
+                        <img id="${previewId}" src="${fixImageUrl(value)}" class="photo-preview" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" style="width:80px; height:80px;">
+                        <div class="upload-label" id="${labelId}">${h === "Photo Link" ? "Click to upload photo" : "Upload"}</div>
+                        <input type="file" id="${uploadId}" accept="image/*" style="display:none;" onchange="${onchangeHandler}">
+                        <input type="hidden" name="${k}" id="${inputId}" value="${value || ''}">
                     </div>`;
         } else if (h === "Join Date" || h === "Expiry Date") {
             const dateValue = toISODate(value) || '';
@@ -415,10 +422,18 @@
             const k = h.replace(/[^a-zA-Z0-9]/g, '');
             let displayValue = c[k] || '-';
             
-            // Show friendly name for photo link
-            if (h === "Photo Link" && displayValue && displayValue !== '-') {
-                const clientName = c.FullName || 'Client';
-                displayValue = `${clientName.replace(/\s+/g, '_')}_photo.png`;
+            // Skip progress photo fields in regular field list for PT Tracker (they're shown below charts)
+            if (currentSheet === "PT Tracker" && h.startsWith("Progress Photo")) {
+                return '';
+            }
+            
+            // Show photo thumbnail and link for Photo Link field
+            if (h === "Photo Link") {
+                if (displayValue && displayValue !== '-') {
+                    return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text"><img src="${fixImageUrl(displayValue)}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid var(--neon); cursor:pointer; vertical-align:middle; margin-right:10px;" onerror="this.style.display='none'" onclick="window.open('${displayValue}', '_blank')"><a href="${displayValue}" target="_blank" style="color: var(--neon); text-decoration: none; font-size:0.75rem;">View Full Size</a></div></div>`;
+                } else {
+                    return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">-</div></div>`;
+                }
             }
             
             return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${displayValue}</div></div>`;
@@ -591,6 +606,31 @@
         // Heart Rate Chart
         heartRateChart = createChart('heartRateChart', heartRateChart, 'Heart Rate',
             ['RestingHeartRateDay1', 'RestingHeartRateWeek1', 'RestingHeartRateWeek4', 'RestingHeartRateWeek8', 'RestingHeartRateWeek12'], '#ff3366', 'bpm');
+        
+        // Add progress photos below charts
+        const progressPhotosHTML = `
+            <div style="margin-top:20px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px;">
+                <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.8rem; margin:0 0 15px 0; text-transform:uppercase; letter-spacing:1px;">📸 Progress Photos Timeline</h3>
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;">
+                    ${[
+                        {key: 'ProgressPhotoDay1', label: 'Day 1'},
+                        {key: 'ProgressPhotoWeek4', label: 'Week 4'},
+                        {key: 'ProgressPhotoWeek8', label: 'Week 8'},
+                        {key: 'ProgressPhotoWeek12', label: 'Week 12'}
+                    ].map(field => `
+                        <div style="text-align:center; background:#050505; padding:12px; border-radius:8px; border:1px solid #333;">
+                            <div style="color:var(--neon); font-size:0.65rem; margin-bottom:8px; font-weight:700; text-transform:uppercase;">${field.label}</div>
+                            <img src="${fixImageUrl(c[field.key])}" 
+                                 style="width:100%; max-width:200px; height:200px; object-fit:cover; border-radius:8px; border:2px solid var(--neon); cursor:pointer;"
+                                 onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'; this.style.opacity='0.3';"
+                                 onclick="window.open('${fixImageUrl(c[field.key])}', '_blank')"
+                                 title="Click to view full size">
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        document.querySelector('.chart-grid').insertAdjacentHTML('afterend', progressPhotosHTML);
     }
 
     function enableEdit(idx) {
@@ -629,6 +669,15 @@
             // Height (single field)
             html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
             html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", c.Height)}</div></div>`;
+            
+            // Progress Photos Upload Section
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">📸 Progress Photos</h3>';
+            html += '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px;">';
+            ["Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"].forEach(h => {
+                const k = h.replace(/[^a-zA-Z0-9]/g, '');
+                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
+            });
+            html += '</div></div>';
             
             // Progress Tracking Table
             html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
@@ -737,6 +786,14 @@
             // Height (single field)
             html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
             html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", '')}</div></div>`;
+            
+            // Progress Photos Upload Section
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">📸 Progress Photos</h3>';
+            html += '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px;">';
+            ["Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"].forEach(h => {
+                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`;
+            });
+            html += '</div></div>';
             
             // Progress Tracking Table
             html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
@@ -849,6 +906,74 @@
                 uploadLabel.style.color = '';
                 alert('Upload error: ' + error.message);
                 photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                hideLoading();
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Handle progress photo uploads
+    async function handleProgressPhotoUpload(event, fieldKey, previewId, labelId, inputId) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            alert('Please upload an image file');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size should be less than 5MB');
+            return;
+        }
+        
+        const uploadLabel = document.getElementById(labelId);
+        const photoPreview = document.getElementById(previewId);
+        const photoLinkInput = document.getElementById(inputId);
+        
+        const originalText = uploadLabel.textContent;
+        uploadLabel.textContent = 'Uploading...';
+        uploadLabel.style.color = '#f1c40f';
+        
+        showLoading('UPLOADING PROGRESS PHOTO...');
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Data = e.target.result.split(',')[1];
+            const uploadData = {
+                action: 'uploadPhoto',
+                fileName: file.name,
+                mimeType: file.type,
+                data: base64Data
+            };
+            
+            photoPreview.src = e.target.result;
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(uploadData)
+                });
+                const result = await response.json();
+                
+                if (result.success && result.url) {
+                    photoLinkInput.value = result.url;
+                    photoPreview.src = result.url;
+                    uploadLabel.textContent = '✓ Uploaded';
+                    uploadLabel.style.color = '#00ff00';
+                    hideLoading();
+                } else {
+                    uploadLabel.textContent = originalText;
+                    uploadLabel.style.color = '';
+                    alert('Upload failed: ' + (result.error || 'Unknown error'));
+                    photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
+                    hideLoading();
+                }
+            } catch (error) {
+                uploadLabel.textContent = originalText;
+                uploadLabel.style.color = '';
+                alert('Upload error: ' + error.message);
+                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
                 hideLoading();
             }
         };
