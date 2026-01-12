@@ -83,9 +83,51 @@
         .spinner { border: 4px solid #222; border-top: 4px solid var(--neon); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .loading-text { color: var(--neon); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* Login Screen */
+        .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; width: 100vw; background: var(--bg); position: fixed; top: 0; left: 0; }
+        .login-box { background: var(--card); border: 2px solid var(--neon); border-radius: 15px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); }
+        .login-logo { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; text-align: center; margin-bottom: 10px; color: #fff; }
+        .login-logo span { color: var(--neon); }
+        .login-subtitle { text-align: center; color: var(--dim); font-size: 0.75rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
+        .login-input { width: 100%; padding: 15px; margin-bottom: 20px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: white; font-size: 0.9rem; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
+        .login-input:focus { border-color: var(--neon); }
+        .password-wrapper { position: relative; margin-bottom: 20px; width: 100%; }
+        .password-wrapper input { margin-bottom: 0; padding-right: 45px; width: 100%; }
+        .password-toggle { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--dim); font-size: 1.1rem; user-select: none; transition: color 0.3s; }
+        .password-toggle:hover { color: var(--neon); }
+        .login-btn { width: 100%; padding: 15px; background: var(--neon); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; cursor: pointer; transition: all 0.3s; position: relative; }
+        .login-btn:hover:not(:disabled) { transform: scale(1.02); }
+        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .login-btn.loading { padding-left: 45px; }
+        .login-btn .spinner-small { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
+        .login-btn.loading .spinner-small { display: block; }
+        .login-error { background: rgba(255, 0, 60, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.8rem; text-align: center; display: none; }
+        .app-container { display: none; }
     </style>
 </head>
 <body>
+
+<!-- Login Screen -->
+<div id="loginScreen" class="login-screen">
+    <div class="login-box">
+        <div class="login-logo">FIT<span>.HIVE</span></div>
+        <div class="login-subtitle">Elite Management System</div>
+        <div id="loginError" class="login-error"></div>
+        <input type="text" id="username" class="login-input" placeholder="Username" onkeypress="if(event.key==='Enter') attemptLogin()">
+        <div class="password-wrapper">
+            <input type="password" id="password" class="login-input" placeholder="Password" onkeypress="if(event.key==='Enter') attemptLogin()">
+            <span class="password-toggle" onclick="togglePassword()" title="Show/Hide Password">👁️</span>
+        </div>
+        <button class="login-btn" id="loginBtn" onclick="attemptLogin()">
+            <span class="spinner-small"></span>
+            <span id="loginBtnText">LOGIN</span>
+        </button>
+    </div>
+</div>
+
+<!-- App Container -->
+<div id="appContainer" class="app-container">
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" class="loading-overlay">
@@ -99,7 +141,8 @@
     <div class="logo">FIT<span>.HIVE</span></div>
     <div class="nav-item active" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
     <div class="nav-item" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
-    <button class="btn-add" style="margin-top:auto" onclick="openAddModal()">+ New Client</button>
+    <button class="btn-add" style="margin-top:auto; margin-bottom:10px;" onclick="openAddModal()">+ New Client</button>
+    <button class="btn-add" style="background:#333; font-size:0.65rem;" onclick="logout()">🚪 Logout</button>
 </div>
 
 <div class="main">
@@ -110,7 +153,7 @@
     </div>
 
     <div class="controls">
-        <input type="text" id="searchInput" placeholder="Search by name..." onkeyup="filterTable()">
+        <input type="text" id="searchInput" placeholder="Search by name or phone number..." onkeyup="filterTable()">
         <select id="statusFilter" onchange="filterTable()">
             <option value="All">All Status</option>
             <option value="Paid">Paid</option>
@@ -204,6 +247,8 @@
         </div>
     </div>
 </div>
+
+</div><!-- End App Container -->
 
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbxfXnZ2Z_zKFitwnJE4Vx3mNSGMBDPCNvDxYGCy1LLz4SahJmY5g6vN9-VIZGNBJhV2Zw/exec";
@@ -363,6 +408,8 @@
 
         filteredData = masterData.filter(c => {
             const matchName = (c.FullName || "").toLowerCase().includes(query);
+            const matchPhone = (c.Phone || "").toLowerCase().includes(query);
+            const matchSearch = matchName || matchPhone;
             const matchStatus = (statusSel === "All") || (c.PaymentStatus === statusSel);
             const exp = new Date(c.ExpiryDate); exp.setHours(0,0,0,0);
             
@@ -376,7 +423,7 @@
                 matchActive = (c.PaymentStatus === 'Paid') && (exp >= today);
             }
 
-            return matchName && matchStatus && matchExpiry && matchActive;
+            return matchSearch && matchStatus && matchExpiry && matchActive;
         });
         renderTable(filteredData);
     }
@@ -987,7 +1034,93 @@
     }
 
     function toggleModal(s) { document.getElementById('modal').classList.toggle('show', s); }
-    window.onload = () => loadTab('Regular Tracker');
+    
+    // Login Functions
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.querySelector('.password-toggle');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.textContent = '🙈';
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.textContent = '👁️';
+        }
+    }
+    
+    function attemptLogin() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const errorDiv = document.getElementById('loginError');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginBtnText = document.getElementById('loginBtnText');
+        
+        if (!username || !password) {
+            errorDiv.textContent = 'Please enter both username and password';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        // Show button loading state
+        loginBtn.classList.add('loading');
+        loginBtn.disabled = true;
+        loginBtnText.textContent = 'AUTHENTICATING...';
+        errorDiv.style.display = 'none';
+        
+        fetch(`${API_URL}?sheet=Login`)
+            .then(r => r.json())
+            .then(users => {
+                const validUser = users.find(u => u.Username === username && u.Password === password);
+                
+                if (validUser) {
+                    loginBtnText.textContent = 'SUCCESS!';
+                    setTimeout(() => {
+                        sessionStorage.setItem('fitHiveAuth', 'true');
+                        sessionStorage.setItem('fitHiveUser', username);
+                        showApp();
+                    }, 500);
+                } else {
+                    loginBtn.classList.remove('loading');
+                    loginBtn.disabled = false;
+                    loginBtnText.textContent = 'LOGIN';
+                    errorDiv.textContent = 'Invalid username or password';
+                    errorDiv.style.display = 'block';
+                    document.getElementById('password').value = '';
+                }
+            })
+            .catch(err => {
+                loginBtn.classList.remove('loading');
+                loginBtn.disabled = false;
+                loginBtnText.textContent = 'LOGIN';
+                errorDiv.textContent = 'Login failed. Please check your connection.';
+                errorDiv.style.display = 'block';
+                console.error('Login error:', err);
+            });
+    }
+    
+    function showApp() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'flex';
+        loadTab('Regular Tracker');
+    }
+    
+    function logout() {
+        sessionStorage.removeItem('fitHiveAuth');
+        sessionStorage.removeItem('fitHiveUser');
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('appContainer').style.display = 'none';
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+    }
+    
+    function checkAuth() {
+        if (sessionStorage.getItem('fitHiveAuth') === 'true') {
+            showApp();
+        }
+    }
+    
+    window.onload = () => checkAuth();
 </script>
 </body>
 </html>
