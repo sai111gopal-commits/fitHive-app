@@ -251,7 +251,7 @@
 </div><!-- End App Container -->
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbza7J6q-HhxPtrsD7vLpecnLtah4qHt3bLnMXQA-USnBpG5DPN41VhVq83NIi-TVyw1_w/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzB6q-0C8sVnqXvM6uZNmm_K89YC4-0hfOdepmPmn6EA9YykLWbGROOTPigkWUY6Ykfpg/exec";
     let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null;
     let weightChart = null, bmiChart = null, bodyFatChart = null, chestChart = null, waistChart = null, hipsChart = null;
     let shouldersChart = null, neckChart = null, upperArmChart = null, forearmChart = null, thighChart = null, calfChart = null, heartRateChart = null;
@@ -277,8 +277,8 @@
     }
 
     const headers = {
-        "Regular Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight"],
-        "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", 
+        "Regular Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight"],
+        "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", 
         "Weight Day 1", "Weight Week 1", "Weight Week 4", "Weight Week 8", "Weight Week 12",
         "Height", 
         "BMI Day 1", "BMI Week 1", "BMI Week 4", "BMI Week 8", "BMI Week 12",
@@ -691,7 +691,7 @@
         
         if (currentSheet === "PT Tracker") {
             // Group PT measurements by time period in table format
-            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
+            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
             const measurements = [
                 {name: "Weight", unit: "kg"},
                 {name: "BMI", unit: ""},
@@ -809,7 +809,7 @@
         
         if (currentSheet === "PT Tracker") {
             // Group PT measurements by time period in table format
-            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Paid", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
+            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
             const measurements = [
                 {name: "Weight", unit: "kg"},
                 {name: "BMI", unit: ""},
@@ -1124,6 +1124,4 @@
 </script>
 </body>
 </html>
-
-
 
