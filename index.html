@@ -887,7 +887,7 @@
             document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`).join('');
         }
         
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Register</button>`;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Register</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
         toggleModal(true);
     }
 
