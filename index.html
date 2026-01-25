@@ -500,6 +500,11 @@
     }
 
     function renderProgress(c) {
+        // Destroy all existing charts first to prevent data bleed between clients
+        [weightChart, bmiChart, bodyFatChart, chestChart, waistChart, hipsChart, 
+         shouldersChart, neckChart, upperArmChart, forearmChart, thighChart, calfChart, heartRateChart]
+            .forEach(chart => { if (chart) chart.destroy(); });
+        
         const timePeriods = ['Day1', 'Week1', 'Week4', 'Week8', 'Week12'];
         const labels = ['Day 1', 'Week 1', 'Week 4', 'Week 8', 'Week 12'];
         
