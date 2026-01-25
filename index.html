@@ -1,1127 +1,149 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>fit.Hive | Elite Management</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
-    <style>
-        :root { --bg: #050505; --card: #111; --neon: #ff003c; --text: #f0f0f0; --dim: #888; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        
-        .sidebar { width: 220px; background: #000; border-right: 1px solid var(--neon); padding: 25px; display: flex; flex-direction: column; }
-        .logo { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; margin-bottom: 40px; color: #fff; text-align: center; }
-        .logo span { color: var(--neon); }
-        .nav-item { padding: 12px 15px; margin-bottom: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 0.85rem; }
-        .nav-item.active { border-color: var(--neon); color: var(--neon); background: rgba(255, 0, 60, 0.05); }
-        .nav-item:hover { background: rgba(255, 0, 60, 0.1); }
+/**
+ * fit.Hive Admin Portal - Backend v8.0
+ * Features: Auto-Expiry, Multi-Sheet Support, Row Locking, Photo Upload to Drive
+ * @OnlyCurrentDoc false
+ */
 
-        .main { flex: 1; padding: 25px; overflow-y: auto; }
-        .dashboard-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
-        .dash-card { background: var(--card); border: 1px solid #222; padding: 15px; border-radius: 10px; border-top: 3px solid var(--neon); }
-        .dash-label { font-size: 0.65rem; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; }
-        .dash-val { font-family: 'Orbitron'; font-size: 1.2rem; margin-top: 5px; color: #fff; }
+const SPREADSHEET_ID = "1iIBGAmV9ixsxs1K-O827pMiAncULk4PAxIftTQ96vMw";
+const DRIVE_FOLDER_ID = "1nk5j54WwSflM01Sc-4fbfiJtk1WTSM3h";
 
-        .controls { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
-        input, select { background: var(--card); border: 1px solid #333; color: white; padding: 10px; border-radius: 6px; outline: none; font-size: 0.8rem; transition: border-color 0.3s; }
-        input:focus, select:focus { border-color: var(--neon); }
+function doGet(e) {
+  const sheetName = (e && e.parameter && e.parameter.sheet) || "Regular Tracker";
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(sheetName);
+  
+  if (!sheet) return ContentService.createTextOutput("[]").setMimeType(ContentService.MimeType.JSON);
 
-        .table-wrapper { background: var(--card); border-radius: 12px; border: 1px solid #222; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
-        th { background: #0a0a0a; padding: 12px; text-align: left; color: var(--neon); font-size: 0.65rem; text-transform: uppercase; border-bottom: 2px solid #222; }
-        td { padding: 10px; border-bottom: 1px solid #1a1a1a; font-size: 0.8rem; color: #ccc; vertical-align: middle; }
-        
-        .status-pill { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-        .status-paid { background: #00ff00; color: #000; }
-        .status-pending { background: #f1c40f; color: #000; }
+  // --- AUTO-EXPIRY ENGINE ---
+  const dataRange = sheet.getDataRange();
+  const values = dataRange.getValues(); 
+  const headers = values[0];
+  const expiryIdx = headers.indexOf("Expiry Date");
+  const statusIdx = headers.indexOf("Payment Status");
 
-        .days-pill { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-        .days-expired { background: #ff003c; color: #fff; }
-        .days-warning { background: #f39c12; color: #000; }
-        .days-ok { background: #2ecc71; color: #000; }
+  if (expiryIdx !== -1 && statusIdx !== -1) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let updatesMade = false;
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: flex-start; justify-content: center; opacity: 0; transition: opacity 0.3s; overflow-y: auto; padding: 20px 0; }
-        .modal.show { display: flex; opacity: 1; }
-        .modal-content { background: #0a0a0a; width: 95%; max-width: none; max-height: none; padding: 20px; border: 1px solid var(--neon); border-radius: 12px; overflow-x: auto; }
-        
-        .profile-layout { display: grid; grid-template-columns: 1fr; gap: 25px; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-        .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .chart-box { background: #0e0e0e; padding: 10px; border-radius: 8px; border: 1px solid #222; }
-        .chart-box h3 { color: var(--neon); font-family: Orbitron; font-size: 0.6rem; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
-        .field-box { border-bottom: 1px solid #222; padding: 8px 0; }
-        .label-text { color: var(--neon); font-size: 0.55rem; text-transform: uppercase; display: block; margin-bottom: 3px; }
-        .val-text { color: #fff; font-size: 0.85rem; font-weight: 500; }
-        
-        .profile-img-large { width: 120px; height: 120px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; background: #222; }
-        .btn-add { background: var(--neon); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; transition: transform 0.2s; }
-        .btn-add:hover { transform: scale(1.05); }
-        
-        .photo-upload-box { background: #181818; border: 1px dashed #333; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: border-color 0.3s; }
-        .photo-upload-box:hover { border-color: var(--neon); }
-        .photo-preview { width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; margin: 10px auto; display: block; }
-        .upload-label { color: var(--dim); font-size: 0.7rem; margin-top: 5px; }
-        
-        /* Custom Calendar Styling */
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="%23ff003c" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>');
-            cursor: pointer;
-            width: 20px;
-            height: 20px;
+    for (let i = 1; i < values.length; i++) {
+      let expiryVal = values[i][expiryIdx];
+      let currentStatus = values[i][statusIdx];
+
+      if (expiryVal instanceof Date) {
+        let checkDate = new Date(expiryVal);
+        checkDate.setHours(0, 0, 0, 0);
+
+        if (checkDate < today && currentStatus !== "Expired") {
+          sheet.getRange(i + 1, statusIdx + 1).setValue("Expired");
+          updatesMade = true;
+        } else if (checkDate >= today && currentStatus === "Expired") {
+          sheet.getRange(i + 1, statusIdx + 1).setValue("Paid");
+          updatesMade = true;
         }
-        input[type="date"]::-webkit-datetime-edit-text,
-        input[type="date"]::-webkit-datetime-edit-month-field,
-        input[type="date"]::-webkit-datetime-edit-day-field,
-        input[type="date"]::-webkit-datetime-edit-year-field {
-            color: #fff;
-        }
-        
-        /* Loading Overlay */
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 9999; align-items: center; justify-content: center; }
-        .loading-overlay.show { display: flex; }
-        .loading-content { text-align: center; }
-        .spinner { border: 4px solid #222; border-top: 4px solid var(--neon); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-text { color: var(--neon); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
-        
-        /* Login Screen */
-        .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; width: 100vw; background: var(--bg); position: fixed; top: 0; left: 0; }
-        .login-box { background: var(--card); border: 2px solid var(--neon); border-radius: 15px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); }
-        .login-logo { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; text-align: center; margin-bottom: 10px; color: #fff; }
-        .login-logo span { color: var(--neon); }
-        .login-subtitle { text-align: center; color: var(--dim); font-size: 0.75rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
-        .login-input { width: 100%; padding: 15px; margin-bottom: 20px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: white; font-size: 0.9rem; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
-        .login-input:focus { border-color: var(--neon); }
-        .password-wrapper { position: relative; margin-bottom: 20px; width: 100%; }
-        .password-wrapper input { margin-bottom: 0; padding-right: 45px; width: 100%; }
-        .password-toggle { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--dim); font-size: 1.1rem; user-select: none; transition: color 0.3s; }
-        .password-toggle:hover { color: var(--neon); }
-        .login-btn { width: 100%; padding: 15px; background: var(--neon); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; cursor: pointer; transition: all 0.3s; position: relative; }
-        .login-btn:hover:not(:disabled) { transform: scale(1.02); }
-        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
-        .login-btn.loading { padding-left: 45px; }
-        .login-btn .spinner-small { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
-        .login-btn.loading .spinner-small { display: block; }
-        .login-error { background: rgba(255, 0, 60, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.8rem; text-align: center; display: none; }
-        .app-container { display: none; }
-    </style>
-</head>
-<body>
-
-<!-- Login Screen -->
-<div id="loginScreen" class="login-screen">
-    <div class="login-box">
-        <div class="login-logo">FIT<span>.HIVE</span></div>
-        <div class="login-subtitle">Elite Management System</div>
-        <div id="loginError" class="login-error"></div>
-        <input type="text" id="username" class="login-input" placeholder="Username" onkeypress="if(event.key==='Enter') attemptLogin()">
-        <div class="password-wrapper">
-            <input type="password" id="password" class="login-input" placeholder="Password" onkeypress="if(event.key==='Enter') attemptLogin()">
-            <span class="password-toggle" onclick="togglePassword()" title="Show/Hide Password">👁️</span>
-        </div>
-        <button class="login-btn" id="loginBtn" onclick="attemptLogin()">
-            <span class="spinner-small"></span>
-            <span id="loginBtnText">LOGIN</span>
-        </button>
-    </div>
-</div>
-
-<!-- App Container -->
-<div id="appContainer" class="app-container">
-
-<!-- Loading Overlay -->
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="loading-content">
-        <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">LOADING...</div>
-    </div>
-</div>
-
-<div class="sidebar">
-    <div class="logo">FIT<span>.HIVE</span></div>
-    <div class="nav-item active" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
-    <div class="nav-item" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
-    <button class="btn-add" style="margin-top:auto; margin-bottom:10px;" onclick="openAddModal()">+ New Client</button>
-    <button class="btn-add" style="background:#333; font-size:0.65rem;" onclick="logout()">🚪 Logout</button>
-</div>
-
-<div class="main">
-    <div class="dashboard-row">
-        <div class="dash-card" style="border-top-color:#00ff00"><div class="dash-label">Total Active</div><div id="statPaid" class="dash-val">0</div></div>
-        <div class="dash-card" style="border-top-color:#f1c40f"><div class="dash-label">Expiring Today</div><div id="statExpToday" class="dash-val">0</div></div>
-        <div class="dash-card" style="border-top-color:#ff003c"><div class="dash-label">Expired</div><div id="statOverdue" class="dash-val">0</div></div>
-    </div>
-
-    <div class="controls">
-        <input type="text" id="searchInput" placeholder="Search by name or phone number..." onkeyup="filterTable()">
-        <select id="statusFilter" onchange="filterTable()">
-            <option value="All">All Status</option>
-            <option value="Paid">Paid</option>
-            <option value="Pending">Pending</option>
-        </select>
-        <select id="expiryFilter" onchange="filterTable()">
-            <option value="All">All Dates</option>
-            <option value="Today">Expiring Today</option>
-            <option value="7Days">Expiring 7 Days</option>
-            <option value="Expired">Already Expired</option>
-        </select>
-        <select id="activeFilter" onchange="filterTable()">
-            <option value="All">All Clients</option>
-            <option value="Active">Active Clients</option>
-        </select>
-        <button class="btn-add" onclick="resetFilters()" style="padding: 8px 12px; font-size: 0.7rem;">🔄 Reset Filters</button>
-    </div>
-
-    <div class="table-wrapper">
-        <table>
-            <thead><tr id="tableHead"></tr></thead>
-            <tbody id="tableBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<div id="modal" class="modal">
-    <div class="modal-content" id="reportArea">
-        <div id="profileHeader" style="display:flex; align-items:center; gap:25px; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #222;"></div>
-        <div class="profile-layout">
-            <div class="info-side">
-                <form id="clientForm"><div class="form-grid" id="formInputs"></div></form>
-                <div id="modalFooter" style="margin-top:20px; display:flex; gap:10px;"></div>
-            </div>
-            <div class="stats-side" id="progressSide">
-                <div class="chart-grid">
-                    <div class="chart-box">
-                        <h3>Weight Progress</h3>
-                        <div style="height:140px;"><canvas id="weightChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>BMI Progress</h3>
-                        <div style="height:140px;"><canvas id="bmiChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Body Fat % Progress</h3>
-                        <div style="height:140px;"><canvas id="bodyFatChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Chest Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="chestChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Waist Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="waistChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Hips Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="hipsChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Shoulders Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="shouldersChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Neck Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="neckChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Upper Arm Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="upperArmChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Forearm Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="forearmChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Thigh Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="thighChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Calf Progress (cm)</h3>
-                        <div style="height:140px;"><canvas id="calfChart"></canvas></div>
-                    </div>
-                    <div class="chart-box">
-                        <h3>Resting Heart Rate (bpm)</h3>
-                        <div style="height:140px;"><canvas id="heartRateChart"></canvas></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-</div><!-- End App Container -->
-
-<script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzB6q-0C8sVnqXvM6uZNmm_K89YC4-0hfOdepmPmn6EA9YykLWbGROOTPigkWUY6Ykfpg/exec";
-    let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null;
-    let weightChart = null, bmiChart = null, bodyFatChart = null, chestChart = null, waistChart = null, hipsChart = null;
-    let shouldersChart = null, neckChart = null, upperArmChart = null, forearmChart = null, thighChart = null, calfChart = null, heartRateChart = null;
-
-    // Loading Functions
-    function showLoading(message = 'LOADING...') {
-        document.getElementById('loadingText').innerText = message;
-        document.getElementById('loadingOverlay').classList.add('show');
+      }
     }
+    if (updatesMade) SpreadsheetApp.flush();
+  }
 
-    function hideLoading() {
-        document.getElementById('loadingOverlay').classList.remove('show');
-    }
+  const displayData = sheet.getDataRange().getValues();
+  const rawHeaders = displayData.shift();
+  
+  const json = displayData.map((row, index) => {
+    let obj = { rowNumber: index + 2 }; 
+    rawHeaders.forEach((h, i) => {
+      const key = h.toString().replace(/[^a-zA-Z0-9]/g, '');
+      obj[key] = row[i];
+    });
+    return obj;
+  });
 
-    // Loading Functions
-    function showLoading(message = 'LOADING...') {
-        document.getElementById('loadingText').innerText = message;
-        document.getElementById('loadingOverlay').classList.add('show');
-    }
+  return ContentService.createTextOutput(JSON.stringify(json)).setMimeType(ContentService.MimeType.JSON);
+}
 
-    function hideLoading() {
-        document.getElementById('loadingOverlay').classList.remove('show');
-    }
-
-    const headers = {
-        "Regular Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight"],
-        "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", 
-        "Weight Day 1", "Weight Week 1", "Weight Week 4", "Weight Week 8", "Weight Week 12",
-        "Height", 
-        "BMI Day 1", "BMI Week 1", "BMI Week 4", "BMI Week 8", "BMI Week 12",
-        "Body Fat % Day 1", "Body Fat % Week 1", "Body Fat % Week 4", "Body Fat % Week 8", "Body Fat % Week 12",
-        "Chest Day 1", "Chest Week 1", "Chest Week 4", "Chest Week 8", "Chest Week 12",
-        "Waist Day 1", "Waist Week 1", "Waist Week 4", "Waist Week 8", "Waist Week 12",
-        "Hips Day 1", "Hips Week 1", "Hips Week 4", "Hips Week 8", "Hips Week 12",
-        "Shoulders Day 1", "Shoulders Week 1", "Shoulders Week 4", "Shoulders Week 8", "Shoulders Week 12",
-        "Neck Day 1", "Neck Week 1", "Neck Week 4", "Neck Week 8", "Neck Week 12",
-        "Upper Arm Day 1", "Upper Arm Week 1", "Upper Arm Week 4", "Upper Arm Week 8", "Upper Arm Week 12",
-        "Forearm Day 1", "Forearm Week 1", "Forearm Week 4", "Forearm Week 8", "Forearm Week 12",
-        "Thigh Day 1", "Thigh Week 1", "Thigh Week 4", "Thigh Week 8", "Thigh Week 12",
-        "Calf Day 1", "Calf Week 1", "Calf Week 4", "Calf Week 8", "Calf Week 12",
-        "Resting Heart Rate Day 1", "Resting Heart Rate Week 1", "Resting Heart Rate Week 4", "Resting Heart Rate Week 8", "Resting Heart Rate Week 12",
-        "Performance Notes",
-        "Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"]
-    };
-
-    function getInputElement(h, value) {
-        const k = h.replace(/[^a-zA-Z0-9]/g, '');
-        if (h === "Photo Link" || h.startsWith("Progress Photo")) {
-            const uploadId = h === "Photo Link" ? "photoUpload" : `progressPhoto${k}`;
-            const previewId = h === "Photo Link" ? "photoPreview" : `preview${k}`;
-            const labelId = h === "Photo Link" ? "uploadLabel" : `label${k}`;
-            const inputId = h === "Photo Link" ? "photoLinkInput" : `input${k}`;
-            const onchangeHandler = h === "Photo Link" ? "handlePhotoUpload(event)" : `handleProgressPhotoUpload(event, '${k}', '${previewId}', '${labelId}', '${inputId}')`;
-            
-            return `<div class="photo-upload-box" onclick="document.getElementById('${uploadId}').click()">
-                        <img id="${previewId}" src="${fixImageUrl(value)}" class="photo-preview" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" style="width:80px; height:80px;">
-                        <div class="upload-label" id="${labelId}">${h === "Photo Link" ? "Click to upload photo" : "Upload"}</div>
-                        <input type="file" id="${uploadId}" accept="image/*" style="display:none;" onchange="${onchangeHandler}">
-                        <input type="hidden" name="${k}" id="${inputId}" value="${value || ''}">
-                    </div>`;
-        } else if (h === "Join Date" || h === "Expiry Date") {
-            const dateValue = toISODate(value) || '';
-            return `<input type="date" name="${k}" value="${dateValue}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px; color-scheme: dark;">`;
-        } else if (h === "Payment Status") {
-            return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Paid" ${value === 'Paid' ? 'selected' : ''}>Paid</option><option value="Pending" ${value === 'Pending' ? 'selected' : ''}>Pending</option></select>`;
-        } else if (h === "Gender") {
-            return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Male" ${value === 'Male' ? 'selected' : ''}>Male</option><option value="Female" ${value === 'Female' ? 'selected' : ''}>Female</option><option value="Other" ${value === 'Other' ? 'selected' : ''}>Other</option></select>`;
-        } else if (h === "Payment Method") {
-            return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Cash" ${value === 'Cash' ? 'selected' : ''}>Cash</option><option value="Card" ${value === 'Card' ? 'selected' : ''}>Card</option><option value="Online" ${value === 'Online' ? 'selected' : ''}>Online</option></select>`;
-        } else {
-            return `<input type="text" name="${k}" value="${value || ''}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;">`;
-        }
-    }
-
-    // IMPROVED PHOTO FIXER
-    function fixImageUrl(url) {
-        if (!url || typeof url !== 'string' || url.length < 5) return 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-        
-        // If already a thumbnail URL, return as is
-        if (url.includes('drive.google.com/thumbnail')) {
-            return url;
-        }
-        
-        // Handle Google Drive - convert to thumbnail URL
-        if (url.includes('drive.google.com')) {
-            const id = url.match(/[-\w]{25,}/);
-            return id ? `https://drive.google.com/thumbnail?id=${id[0]}&sz=w400` : url;
-        }
-        
-        // Google Photos Warning
-        if (url.includes('photos.app.goo.gl')) {
-            console.warn("Google Photos links are not direct images. Use Google Drive instead.");
-            return 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-        }
-        
-        return url;
-    }
-
-    function toISODate(dStr) {
-        if(!dStr) return null;
-        const d = new Date(dStr);
-        if(isNaN(d.getTime())) return null;
-        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    }
-
-    async function loadTab(sheet, el) {
-        showLoading(`LOADING ${sheet.toUpperCase()}...`);
-        try {
-            currentSheet = sheet;
-            if(el) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
-            const res = await fetch(`${API_URL}?sheet=${currentSheet}`);
-            masterData = await res.json();
-            updateDashboard();
-            filterTable();
-        } catch (error) {
-            console.error('Error loading data:', error);
-            alert('Failed to load data. Please try again.');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    function updateDashboard() {
-        const todayStr = toISODate(new Date());
-        let paid = 0, expToday = 0, overdue = 0;
-        masterData.forEach(c => {
-            if((c.PaymentStatus || "").toLowerCase() === 'paid') paid++;
-            const expStr = toISODate(c.ExpiryDate);
-            if(expStr) {
-                if(expStr === todayStr) expToday++;
-                else if(expStr < todayStr) overdue++;
-            }
-        });
-        document.getElementById('statPaid').innerText = paid;
-        document.getElementById('statExpToday').innerText = expToday;
-        document.getElementById('statOverdue').innerText = overdue;
-    }
-
-    function resetFilters() {
-        document.getElementById('searchInput').value = '';
-        document.getElementById('statusFilter').value = 'All';
-        document.getElementById('expiryFilter').value = 'All';
-        document.getElementById('activeFilter').value = 'All';
-        filterTable();
-    }
-
-    function filterTable() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
-        const statusSel = document.getElementById('statusFilter').value;
-        const expirySel = document.getElementById('expiryFilter').value;
-        const activeSel = document.getElementById('activeFilter').value;
-        const today = new Date(); today.setHours(0,0,0,0);
-        const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-        filteredData = masterData.filter(c => {
-            const matchName = (c.FullName || "").toLowerCase().includes(query);
-            const matchPhone = (c.Phone || "").toLowerCase().includes(query);
-            const matchSearch = matchName || matchPhone;
-            const matchStatus = (statusSel === "All") || (c.PaymentStatus === statusSel);
-            const exp = new Date(c.ExpiryDate); exp.setHours(0,0,0,0);
-            
-            let matchExpiry = true;
-            if(expirySel === "Today") matchExpiry = toISODate(exp) === toISODate(today);
-            else if(expirySel === "Expired") matchExpiry = exp < today;
-            else if(expirySel === "7Days") matchExpiry = exp > today && exp <= nextWeek;
-
-            let matchActive = true;
-            if(activeSel === "Active") {
-                matchActive = (c.PaymentStatus === 'Paid') && (exp >= today);
-            }
-
-            return matchSearch && matchStatus && matchExpiry && matchActive;
-        });
-        renderTable(filteredData);
-    }
-
-    function renderTable(data) {
-        const today = new Date(); today.setHours(0,0,0,0);
-        const displayKeys = currentSheet === "PT Tracker" 
-            ? ["Client ID", "Photo Link", "Full Name", "Training Slot", "Expiry Date", "Days Left", "Payment Status"]
-            : ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Expiry Date", "Days Left", "Payment Status"];
-
-        document.getElementById('tableHead').innerHTML = displayKeys.map(h => `<th>${h}</th>`).join('');
-        document.getElementById('tableBody').innerHTML = data.map((row, idx) => {
-            const exp = new Date(row.ExpiryDate); exp.setHours(0,0,0,0);
-            const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-            
-            let daysHtml = "";
-            if (diff < 0) daysHtml = `<span class="days-pill days-expired">Expired</span>`;
-            else if (diff === 0) daysHtml = `<span class="days-pill days-warning">Ends Today</span>`;
-            else daysHtml = `<span class="days-pill days-ok">${diff} Days Left</span>`;
-
-            return `<tr onclick="viewDetails(${idx})">
-                ${displayKeys.map(k => {
-                    if(k === "Days Left") return `<td>${daysHtml}</td>`;
-                    const key = k.replace(/[^a-zA-Z0-9]/g, '');
-                    const val = row[key] || '-';
-                    if(k === "Photo Link") return `<td><img src="${fixImageUrl(val)}" style="width:35px;height:35px;border-radius:50%;border:1px solid var(--neon);"></td>`;
-                    if(k === "Payment Status") return `<td><span class="status-pill status-${val.toLowerCase()}">${val}</span></td>`;
-                    return `<td>${val}</td>`;
-                }).join('')}
-            </tr>`;
-        }).join('');
-    }
-
-    function viewDetails(idx) {
-        const c = filteredData[idx];
-        currentEditRow = c.rowNumber;
-        document.getElementById('profileHeader').innerHTML = `
-            <img src="${fixImageUrl(c.PhotoLink)}" class="profile-img-large">
-            <div><h1 style="margin:0; font-family:Orbitron;">${c.FullName}</h1>
-            <span>ID: ${c.ClientID} ${c.TrainingSlot ? '| Slot: '+c.TrainingSlot : ''}</span></div>`;
-
-        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
-            const k = h.replace(/[^a-zA-Z0-9]/g, '');
-            let displayValue = c[k] || '-';
-            
-            // Skip progress photo fields in regular field list for PT Tracker (they're shown below charts)
-            if (currentSheet === "PT Tracker" && h.startsWith("Progress Photo")) {
-                return '';
-            }
-            
-            // Show photo thumbnail and link for Photo Link field
-            if (h === "Photo Link") {
-                if (displayValue && displayValue !== '-') {
-                    return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text"><img src="${fixImageUrl(displayValue)}" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid var(--neon); cursor:pointer; vertical-align:middle; margin-right:10px;" onerror="this.style.display='none'" onclick="window.open('${displayValue}', '_blank')"><a href="${displayValue}" target="_blank" style="color: var(--neon); text-decoration: none; font-size:0.75rem;">View Full Size</a></div></div>`;
-                } else {
-                    return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">-</div></div>`;
-                }
-            }
-            
-            return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${displayValue}</div></div>`;
-        }).join('');
-
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit Client</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
-        
-        // Only render progress charts for PT Tracker
-        if (currentSheet === "PT Tracker") {
-            document.getElementById('progressSide').style.display = 'block';
-            renderProgress(c);
-        } else {
-            document.getElementById('progressSide').style.display = 'none';
-        }
-        
-        toggleModal(true);
-    }
-
-    function renderProgress(c) {
-        const timePeriods = ['Day1', 'Week1', 'Week4', 'Week8', 'Week12'];
-        const labels = ['Day 1', 'Week 1', 'Week 4', 'Week 8', 'Week 12'];
-        
-        // Helper function to create chart with animations
-        const createChart = (canvasId, chartVar, label, dataKeys, color = '#ff003c', unit = '') => {
-            const data = dataKeys.map(key => parseFloat(c[key]) || null);
-            const hasData = data.some(val => val !== null);
-            
-            if (!hasData) return null;
-            
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            if (chartVar) chartVar.destroy();
-            
-            return new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: data,
-                        borderColor: color,
-                        backgroundColor: color.replace(')', ', 0.15)').replace('rgb', 'rgba'),
-                        fill: true,
-                        tension: 0.4,
-                        spanGaps: true,
-                        borderWidth: 3,
-                        pointRadius: 6,
-                        pointHoverRadius: 8,
-                        pointBackgroundColor: color,
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: color,
-                        pointHoverBorderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeInOutQuart',
-                        delay: (context) => {
-                            let delay = 0;
-                            if (context.type === 'data' && context.mode === 'default') {
-                                delay = context.dataIndex * 150;
-                            }
-                            return delay;
-                        }
-                    },
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                            titleColor: color,
-                            bodyColor: '#fff',
-                            borderColor: color,
-                            borderWidth: 2,
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return label + ': ' + context.parsed.y.toFixed(2) + ' ' + unit;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: { 
-                            beginAtZero: false,
-                            ticks: { 
-                                color: '#ccc',
-                                font: { size: 11 },
-                                callback: function(value) {
-                                    return value.toFixed(1) + ' ' + unit;
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false
-                            }
-                        },
-                        x: { 
-                            ticks: { 
-                                color: '#ccc',
-                                font: { size: 11, weight: 'bold' }
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false
-                            }
-                        }
-                    },
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    }
-                }
-            });
-        };
-        
-        // Weight Chart
-        weightChart = createChart('weightChart', weightChart, 'Weight', 
-            ['WeightDay1', 'WeightWeek1', 'WeightWeek4', 'WeightWeek8', 'WeightWeek12'], '#ff003c', 'kg');
-        
-        // BMI Chart
-        bmiChart = createChart('bmiChart', bmiChart, 'BMI',
-            ['BMIDay1', 'BMIWeek1', 'BMIWeek4', 'BMIWeek8', 'BMIWeek12'], '#00d4ff', '');
-        
-        // Body Fat Chart
-        bodyFatChart = createChart('bodyFatChart', bodyFatChart, 'Body Fat',
-            ['BodyFatDay1', 'BodyFatWeek1', 'BodyFatWeek4', 'BodyFatWeek8', 'BodyFatWeek12'], '#ffa500', '%');
-        
-        // Chest Chart
-        chestChart = createChart('chestChart', chestChart, 'Chest',
-            ['ChestDay1', 'ChestWeek1', 'ChestWeek4', 'ChestWeek8', 'ChestWeek12'], '#00ff00', 'cm');
-        
-        // Waist Chart
-        waistChart = createChart('waistChart', waistChart, 'Waist',
-            ['WaistDay1', 'WaistWeek1', 'WaistWeek4', 'WaistWeek8', 'WaistWeek12'], '#ff00ff', 'cm');
-        
-        // Hips Chart
-        hipsChart = createChart('hipsChart', hipsChart, 'Hips',
-            ['HipsDay1', 'HipsWeek1', 'HipsWeek4', 'HipsWeek8', 'HipsWeek12'], '#ffff00', 'cm');
-        
-        // Shoulders Chart
-        shouldersChart = createChart('shouldersChart', shouldersChart, 'Shoulders',
-            ['ShouldersDay1', 'ShouldersWeek1', 'ShouldersWeek4', 'ShouldersWeek8', 'ShouldersWeek12'], '#00ffff', 'cm');
-        
-        // Neck Chart
-        neckChart = createChart('neckChart', neckChart, 'Neck',
-            ['NeckDay1', 'NeckWeek1', 'NeckWeek4', 'NeckWeek8', 'NeckWeek12'], '#ff6600', 'cm');
-        
-        // Upper Arm Chart
-        upperArmChart = createChart('upperArmChart', upperArmChart, 'Upper Arm',
-            ['UpperArmDay1', 'UpperArmWeek1', 'UpperArmWeek4', 'UpperArmWeek8', 'UpperArmWeek12'], '#9900ff', 'cm');
-        
-        // Forearm Chart
-        forearmChart = createChart('forearmChart', forearmChart, 'Forearm',
-            ['ForearmDay1', 'ForearmWeek1', 'ForearmWeek4', 'ForearmWeek8', 'ForearmWeek12'], '#00ff99', 'cm');
-        
-        // Thigh Chart
-        thighChart = createChart('thighChart', thighChart, 'Thigh',
-            ['ThighDay1', 'ThighWeek1', 'ThighWeek4', 'ThighWeek8', 'ThighWeek12'], '#ff0099', 'cm');
-        
-        // Calf Chart
-        calfChart = createChart('calfChart', calfChart, 'Calf',
-            ['CalfDay1', 'CalfWeek1', 'CalfWeek4', 'CalfWeek8', 'CalfWeek12'], '#99ff00', 'cm');
-        
-        // Heart Rate Chart
-        heartRateChart = createChart('heartRateChart', heartRateChart, 'Heart Rate',
-            ['RestingHeartRateDay1', 'RestingHeartRateWeek1', 'RestingHeartRateWeek4', 'RestingHeartRateWeek8', 'RestingHeartRateWeek12'], '#ff3366', 'bpm');
-        
-        // Remove any existing progress photos section before adding new one
-        const existingPhotos = document.getElementById('progressPhotosSection');
-        if (existingPhotos) {
-            existingPhotos.remove();
-        }
-        
-        // Add progress photos below charts
-        const progressPhotosHTML = `
-            <div id="progressPhotosSection" style="margin-top:20px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px;">
-                <h3 style="color:var(--neon); font-family:Orbitron; font-size:0.8rem; margin:0 0 15px 0; text-transform:uppercase; letter-spacing:1px;">📸 Progress Photos Timeline</h3>
-                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:15px;">
-                    ${[
-                        {key: 'ProgressPhotoDay1', label: 'Day 1'},
-                        {key: 'ProgressPhotoWeek4', label: 'Week 4'},
-                        {key: 'ProgressPhotoWeek8', label: 'Week 8'},
-                        {key: 'ProgressPhotoWeek12', label: 'Week 12'}
-                    ].map(field => `
-                        <div style="text-align:center; background:#050505; padding:12px; border-radius:8px; border:1px solid #333;">
-                            <div style="color:var(--neon); font-size:0.65rem; margin-bottom:8px; font-weight:700; text-transform:uppercase;">${field.label}</div>
-                            <img src="${fixImageUrl(c[field.key])}" 
-                                 style="width:100%; max-width:200px; height:200px; object-fit:cover; border-radius:8px; border:2px solid var(--neon); cursor:pointer;"
-                                 onerror="this.src='https://cdn-icons-png.flaticon.com/512/3342/3342137.png'; this.style.opacity='0.3';"
-                                 onclick="window.open('${fixImageUrl(c[field.key])}', '_blank')"
-                                 title="Click to view full size">
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-        document.querySelector('.chart-grid').insertAdjacentHTML('afterend', progressPhotosHTML);
-    }
-
-    function enableEdit(idx) {
-        const c = filteredData[idx];
-        
-        if (currentSheet === "PT Tracker") {
-            // Group PT measurements by time period in table format
-            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
-            const measurements = [
-                {name: "Weight", unit: "kg"},
-                {name: "BMI", unit: ""},
-                {name: "Body Fat %", unit: "%"},
-                {name: "Chest", unit: "cm"},
-                {name: "Waist", unit: "cm"},
-                {name: "Hips", unit: "cm"},
-                {name: "Shoulders", unit: "cm"},
-                {name: "Neck", unit: "cm"},
-                {name: "Upper Arm", unit: "cm"},
-                {name: "Forearm", unit: "cm"},
-                {name: "Thigh", unit: "cm"},
-                {name: "Calf", unit: "cm"},
-                {name: "Resting Heart Rate", unit: "bpm"}
-            ];
-            const timePeriods = ["Day 1", "Week 1", "Week 4", "Week 8", "Week 12"];
-            
-            let html = '<div style="display:grid; grid-template-columns: 1fr; gap:20px;">';
-            
-            // Basic Info Section
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
-            basicFields.forEach(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            });
-            html += '</div></div>';
-            
-            // Height (single field)
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
-            html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", c.Height)}</div></div>`;
-            
-            // Progress Photos Upload Section
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">📸 Progress Photos</h3>';
-            html += '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px;">';
-            ["Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"].forEach(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            });
-            html += '</div></div>';
-            
-            // Progress Tracking Table
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
-            html += '<table style="width:100%; border-collapse:collapse; background:#0a0a0a; border:1px solid #222; table-layout: auto; min-width: 800px;">';
-            
-            // Table Header
-            html += '<thead><tr style="background:#000; border-bottom:2px solid var(--neon);">';
-            html += '<th style="padding:6px 4px; text-align:left; color:var(--neon); font-size:0.55rem; text-transform:uppercase; border-right:1px solid #222; white-space:nowrap;">Measurement</th>';
-            timePeriods.forEach(period => {
-                html += `<th style="padding:6px 4px; text-align:center; color:var(--neon); font-size:0.55rem; text-transform:uppercase; border-right:1px solid #222; white-space:nowrap;">${period}</th>`;
-            });
-            html += '</tr></thead>';
-            
-            // Table Body
-            html += '<tbody>';
-            measurements.forEach((m, idx) => {
-                html += `<tr style="border-bottom:1px solid #222; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">`;
-                html += `<td style="padding:6px 4px; color:#fff; font-size:0.65rem; border-right:1px solid #222; white-space:nowrap;">${m.name} ${m.unit ? '(' + m.unit + ')' : ''}</td>`;
-                
-                timePeriods.forEach(period => {
-                    const fieldName = `${m.name} ${period}`;
-                    const k = fieldName.replace(/[^a-zA-Z0-9]/g, '');
-                    html += `<td style="padding:3px; border-right:1px solid #222;"><input type="text" name="${k}" value="${c[k] || ''}" style="width:70px; min-width:70px; border:none; background:#181818; color:#fff; padding:4px; border-radius:3px; text-align:center; font-size:0.7rem;"></td>`;
-                });
-                
-                html += '</tr>';
-            });
-            html += '</tbody></table></div>';
-            
-            // Performance Notes
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Notes</h3>';
-            html += `<div class="field-box"><label class="label-text">Performance Notes</label>${getInputElement("Performance Notes", c.PerformanceNotes)}</div></div>`;
-            
-            html += '</div>';
-            document.getElementById('formInputs').innerHTML = html;
-        } else {
-            // Regular Tracker - standard grid layout
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            }).join('');
-        }
-        
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('edit')">Save Changes</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
-    }
-
-    async function submitData(action) {
-        if(!confirm("Update database?")) return;
-        
-        showLoading(action === 'add' ? 'ADDING CLIENT...' : 'UPDATING CLIENT...');
-        
-        try {
-            const formData = new FormData(document.getElementById('clientForm'));
-            const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
-            const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
-            if(action === 'edit') params.append("rowNumber", currentEditRow);
-            
-            toggleModal(false);
-            
-            await fetch(`${API_URL}?${params.toString()}`, { method: 'POST' });
-            
-            // Show success message briefly
-            showLoading('CHANGES SAVED! REFRESHING...');
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            await loadTab(currentSheet);
-        } catch (error) {
-            console.error('Error saving data:', error);
-            alert('Failed to save changes. Please try again.');
-            hideLoading();
-        }
-    }
-
-    function openAddModal() {
-        document.getElementById('profileHeader').innerHTML = `<h1>ADD CLIENT</h1>`;
-        
-        if (currentSheet === "PT Tracker") {
-            // Group PT measurements by time period in table format
-            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
-            const measurements = [
-                {name: "Weight", unit: "kg"},
-                {name: "BMI", unit: ""},
-                {name: "Body Fat %", unit: "%"},
-                {name: "Chest", unit: "cm"},
-                {name: "Waist", unit: "cm"},
-                {name: "Hips", unit: "cm"},
-                {name: "Shoulders", unit: "cm"},
-                {name: "Neck", unit: "cm"},
-                {name: "Upper Arm", unit: "cm"},
-                {name: "Forearm", unit: "cm"},
-                {name: "Thigh", unit: "cm"},
-                {name: "Calf", unit: "cm"},
-                {name: "Resting Heart Rate", unit: "bpm"}
-            ];
-            const timePeriods = ["Day 1", "Week 1", "Week 4", "Week 8", "Week 12"];
-            
-            let html = '<div style="display:grid; grid-template-columns: 1fr; gap:20px;">';
-            
-            // Basic Info Section
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
-            basicFields.forEach(h => {
-                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`;
-            });
-            html += '</div></div>';
-            
-            // Height (single field)
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
-            html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", '')}</div></div>`;
-            
-            // Progress Photos Upload Section
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">📸 Progress Photos</h3>';
-            html += '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px;">';
-            ["Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"].forEach(h => {
-                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`;
-            });
-            html += '</div></div>';
-            
-            // Progress Tracking Table
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
-            html += '<div style="overflow-x: auto;"><table style="width:100%; border-collapse:collapse; background:#0a0a0a; border:1px solid #222;">';
-            
-            // Table Header
-            html += '<thead><tr style="background:#000; border-bottom:2px solid var(--neon);">';
-            html += '<th style="padding:12px; text-align:left; color:var(--neon); font-size:0.65rem; text-transform:uppercase; border-right:1px solid #222; position:sticky; left:0; background:#000;">Measurement</th>';
-            timePeriods.forEach(period => {
-                html += `<th style="padding:12px; text-align:center; color:var(--neon); font-size:0.65rem; text-transform:uppercase; border-right:1px solid #222;">${period}</th>`;
-            });
-            html += '</tr></thead>';
-            
-            // Table Body
-            html += '<tbody>';
-            measurements.forEach((m, idx) => {
-                html += `<tr style="border-bottom:1px solid #222; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">`;
-                html += `<td style="padding:10px; color:#fff; font-size:0.75rem; border-right:1px solid #222; position:sticky; left:0; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">${m.name} ${m.unit ? '(' + m.unit + ')' : ''}</td>`;
-                
-                timePeriods.forEach(period => {
-                    const fieldName = `${m.name} ${period}`;
-                    const k = fieldName.replace(/[^a-zA-Z0-9]/g, '');
-                    html += `<td style="padding:5px; border-right:1px solid #222;"><input type="text" name="${k}" value="" placeholder="-" style="width:100%; border:none; background:#181818; color:#fff; padding:6px; border-radius:4px; text-align:center;"></td>`;
-                });
-                
-                html += '</tr>';
-            });
-            html += '</tbody></table></div></div>';
-            
-            // Performance Notes
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Notes</h3>';
-            html += `<div class="field-box"><label class="label-text">Performance Notes</label>${getInputElement("Performance Notes", '')}</div></div>`;
-            
-            html += '</div>';
-            document.getElementById('formInputs').innerHTML = html;
-        } else {
-            // Regular Tracker - standard grid layout
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`).join('');
-        }
-        
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Register</button>`;
-        toggleModal(true);
-    }
-
-    let uploadedPhotoData = null;
-
-    async function handlePhotoUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file');
-            return;
-        }
-        
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Image size should be less than 5MB');
-            return;
-        }
-        
-        // Get references to elements
-        const uploadLabel = document.getElementById('uploadLabel');
-        const photoPreview = document.getElementById('photoPreview');
-        const photoLinkInput = document.getElementById('photoLinkInput');
-        
-        const originalText = uploadLabel.textContent;
-        uploadLabel.textContent = 'Uploading...';
-        uploadLabel.style.color = '#f1c40f';
-        
-        showLoading('UPLOADING PHOTO...');
-        
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const base64Data = e.target.result.split(',')[1];
-            const uploadData = {
-                action: 'uploadPhoto',
-                fileName: file.name,
-                mimeType: file.type,
-                data: base64Data
-            };
-            
-            // Show local preview immediately
-            photoPreview.src = e.target.result;
-            
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(uploadData)
-                });
-                const result = await response.json();
-                
-                if (result.success && result.url) {
-                    // Update the hidden input with Google Drive URL
-                    photoLinkInput.value = result.url;
-                    // Update preview with actual Drive URL
-                    photoPreview.src = result.url;
-                    uploadLabel.textContent = '✓ Photo uploaded! Click to change';
-                    uploadLabel.style.color = '#00ff00';
-                    console.log('Photo URL saved:', result.url);
-                    hideLoading();
-                } else {
-                    uploadLabel.textContent = originalText;
-                    uploadLabel.style.color = '';
-                    alert('Upload failed: ' + (result.error || 'Unknown error'));
-                    photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-                    hideLoading();
-                }
-            } catch (error) {
-                uploadLabel.textContent = originalText;
-                uploadLabel.style.color = '';
-                alert('Upload error: ' + error.message);
-                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-                hideLoading();
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // Handle progress photo uploads
-    async function handleProgressPhotoUpload(event, fieldKey, previewId, labelId, inputId) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file');
-            return;
-        }
-        
-        if (file.size > 5 * 1024 * 1024) {
-            alert('Image size should be less than 5MB');
-            return;
-        }
-        
-        const uploadLabel = document.getElementById(labelId);
-        const photoPreview = document.getElementById(previewId);
-        const photoLinkInput = document.getElementById(inputId);
-        
-        const originalText = uploadLabel.textContent;
-        uploadLabel.textContent = 'Uploading...';
-        uploadLabel.style.color = '#f1c40f';
-        
-        showLoading('UPLOADING PROGRESS PHOTO...');
-        
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const base64Data = e.target.result.split(',')[1];
-            const uploadData = {
-                action: 'uploadPhoto',
-                fileName: file.name,
-                mimeType: file.type,
-                data: base64Data
-            };
-            
-            photoPreview.src = e.target.result;
-            
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(uploadData)
-                });
-                const result = await response.json();
-                
-                if (result.success && result.url) {
-                    photoLinkInput.value = result.url;
-                    photoPreview.src = result.url;
-                    uploadLabel.textContent = '✓ Uploaded';
-                    uploadLabel.style.color = '#00ff00';
-                    hideLoading();
-                } else {
-                    uploadLabel.textContent = originalText;
-                    uploadLabel.style.color = '';
-                    alert('Upload failed: ' + (result.error || 'Unknown error'));
-                    photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
-                    hideLoading();
-                }
-            } catch (error) {
-                uploadLabel.textContent = originalText;
-                uploadLabel.style.color = '';
-                alert('Upload error: ' + error.message);
-                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
-                hideLoading();
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function toggleModal(s) { document.getElementById('modal').classList.toggle('show', s); }
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(10000); 
+  
+  try {
+    // Parse the request properly
+    let params;
     
-    // Login Functions
-    function togglePassword() {
-        const passwordInput = document.getElementById('password');
-        const toggleIcon = document.querySelector('.password-toggle');
-        
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            toggleIcon.textContent = '🙈';
-        } else {
-            passwordInput.type = 'password';
-            toggleIcon.textContent = '👁️';
-        }
+    if (e.postData && e.postData.contents) {
+      try {
+        params = JSON.parse(e.postData.contents);
+      } catch (parseError) {
+        throw new Error("Failed to parse JSON: " + parseError.toString());
+      }
+    } else if (e.parameter && e.parameter.action) {
+      params = e.parameter;
+    } else {
+      throw new Error("No valid request data found");
     }
     
-    function attemptLogin() {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value.trim();
-        const errorDiv = document.getElementById('loginError');
-        const loginBtn = document.getElementById('loginBtn');
-        const loginBtnText = document.getElementById('loginBtnText');
-        
-        if (!username || !password) {
-            errorDiv.textContent = 'Please enter both username and password';
-            errorDiv.style.display = 'block';
-            return;
-        }
-        
-        // Show button loading state
-        loginBtn.classList.add('loading');
-        loginBtn.disabled = true;
-        loginBtnText.textContent = 'AUTHENTICATING...';
-        errorDiv.style.display = 'none';
-        
-        fetch(`${API_URL}?sheet=Login`)
-            .then(r => r.json())
-            .then(users => {
-                const validUser = users.find(u => u.Username === username && u.Password === password);
-                
-                if (validUser) {
-                    loginBtnText.textContent = 'SUCCESS!';
-                    setTimeout(() => {
-                        sessionStorage.setItem('fitHiveAuth', 'true');
-                        sessionStorage.setItem('fitHiveUser', username);
-                        showApp();
-                    }, 500);
-                } else {
-                    loginBtn.classList.remove('loading');
-                    loginBtn.disabled = false;
-                    loginBtnText.textContent = 'LOGIN';
-                    errorDiv.textContent = 'Invalid username or password';
-                    errorDiv.style.display = 'block';
-                    document.getElementById('password').value = '';
-                }
-            })
-            .catch(err => {
-                loginBtn.classList.remove('loading');
-                loginBtn.disabled = false;
-                loginBtnText.textContent = 'LOGIN';
-                errorDiv.textContent = 'Login failed. Please check your connection.';
-                errorDiv.style.display = 'block';
-                console.error('Login error:', err);
-            });
-    }
-    
-    function showApp() {
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'flex';
-        loadTab('Regular Tracker');
-    }
-    
-    function logout() {
-        sessionStorage.removeItem('fitHiveAuth');
-        sessionStorage.removeItem('fitHiveUser');
-        document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('appContainer').style.display = 'none';
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-    }
-    
-    function checkAuth() {
-        if (sessionStorage.getItem('fitHiveAuth') === 'true') {
-            showApp();
-        }
-    }
-    
-    window.onload = () => checkAuth();
-</script>
-</body>
-</html>
+    const action = params.action;
 
+    // --- PHOTO UPLOAD HANDLER ---
+    if (action === "uploadPhoto") {
+      const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      
+      // Validate required fields
+      if (!params.fileName) throw new Error("Missing fileName");
+      if (!params.mimeType) throw new Error("Missing mimeType");
+      if (!params.data) throw new Error("Missing data");
+      
+      // Create timestamp for unique filename
+      const timestamp = new Date().getTime();
+      const uniqueFileName = `client_photo_${timestamp}_${params.fileName}`;
+      
+      // Decode base64 to byte array
+      const decodedBytes = Utilities.base64Decode(params.data);
+      
+      // Create blob directly from byte array
+      const blob = Utilities.newBlob(decodedBytes, params.mimeType, uniqueFileName);
+      
+      // Create file in Drive folder
+      const file = folder.createFile(blob);
+      const fileId = file.getId();
+      
+      // Set sharing to anyone with link
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      
+      // Use thumbnail URL instead - works better for public files
+      const url = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        url: url,
+        fileId: fileId,
+        fileName: uniqueFileName
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // --- ADD/EDIT CLIENT DATA ---
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheetName = params.sheetName;
+    const sheet = ss.getSheetByName(sheetName);
+    let rowData = typeof params.data === 'string' ? JSON.parse(params.data) : params.data;
+
+    if (action === "add") {
+      sheet.appendRow(rowData);
+    } else if (action === "edit") {
+      const rowNumber = parseInt(params.rowNumber);
+      sheet.getRange(rowNumber, 1, 1, rowData.length).setValues([rowData]);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: "Data saved successfully"
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } finally { 
+    lock.releaseLock(); 
+  }
+}
