@@ -6,40 +6,46 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #050505; --card: #111; --neon: #ff003c; --text: #f0f0f0; --dim: #888; }
-        body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; width: 100%; }
+        :root { --bg: #050505; --card: #111; --neon: #ff003c; --text: #f0f0f0; --dim: #888; --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; width: 100%; transition: var(--transition); }
         
-        .sidebar { flex-shrink: 0; width: 220px; background: #000; border-right: 1px solid var(--neon); padding: 25px; display: flex; flex-direction: column; box-sizing: border-box; }
-        .logo { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; margin-bottom: 40px; color: #fff; text-align: center; font-weight: 600; letter-spacing: 0.5px; }
-        .logo span { color: var(--neon); }
-        .nav-item { padding: 12px 15px; margin-bottom: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer; transition: 0.3s; font-size: 0.9rem; font-weight: 500; text-align: center; line-height: 1.4; }
-        .nav-item.active { border-color: var(--neon); color: var(--neon); background: rgba(255, 0, 60, 0.05); }
-        .nav-item:hover { background: rgba(255, 0, 60, 0.1); }
+        .sidebar { flex-shrink: 0; width: 220px; background: #000; border-right: 2px solid var(--neon); padding: 25px; display: flex; flex-direction: column; box-sizing: border-box; box-shadow: 2px 0 15px rgba(255, 0, 60, 0.1); }
+        .logo { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; margin-bottom: 40px; color: #fff; text-align: center; font-weight: 600; letter-spacing: 0.5px; animation: slideInDown 0.6s ease-out; }
+        .logo span { color: var(--neon); text-shadow: 0 0 10px rgba(255, 0, 60, 0.5); }
+        .nav-item { padding: 12px 15px; margin-bottom: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer; transition: var(--transition); font-size: 0.9rem; font-weight: 500; text-align: center; line-height: 1.4; animation: slideInLeft 0.5s ease-out; }
+        .nav-item.active { border-color: var(--neon); color: var(--neon); background: rgba(255, 0, 60, 0.1); box-shadow: inset 0 0 10px rgba(255, 0, 60, 0.2); }
+        .nav-item:hover { background: rgba(255, 0, 60, 0.15); transform: translateX(5px); border-color: var(--neon); }
 
-        .main { flex: 1; padding: 25px; overflow-y: auto; overflow-x: hidden; min-width: 0; width: 100%; box-sizing: border-box; }
-        .dashboard-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; min-width: 0; width: 100%; box-sizing: border-box; padding: 0; margin: 0 0 25px 0; }
-        .dash-card { background: var(--card); border: 1px solid #222; padding: 15px; border-radius: 10px; border-top: 3px solid var(--neon); }
-        .dash-label { font-size: 0.8rem; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; font-weight: 600; text-align: center; }
-        .dash-val { font-family: 'Orbitron'; font-size: 1.3rem; margin-top: 8px; color: #fff; text-align: center; }
+        .main { flex: 1; padding: 25px; overflow-y: auto; overflow-x: hidden; min-width: 0; width: 100%; box-sizing: border-box; animation: fadeIn 0.6s ease-out; }
+        .dashboard-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px; min-width: 0; width: 100%; box-sizing: border-box; padding: 0; }
+        .dash-card { background: var(--card); border: 1px solid #222; padding: 20px; border-radius: 12px; border-top: 4px solid var(--neon); cursor: pointer; transition: var(--transition); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); animation: slideUp 0.6s ease-out; }
+        .dash-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(255, 0, 60, 0.2); }
+        .dash-label { font-size: 0.75rem; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; font-weight: 600; text-align: center; }
+        .dash-val { font-family: 'Orbitron'; font-size: 1.8rem; margin-top: 12px; color: var(--neon); text-align: center; font-weight: bold; }
 
-        .controls { display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; min-width: 0; width: 100%; padding: 0; box-sizing: border-box; }
-        input, select { background: var(--card); border: 1px solid #333; color: white; padding: 10px 12px; border-radius: 6px; outline: none; font-size: 0.9rem; transition: border-color 0.3s; font-weight: 500; }
-        input:focus, select:focus { border-color: var(--neon); }
+        .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; min-width: 0; width: 100%; padding: 0; box-sizing: border-box; animation: slideUp 0.5s ease-out 0.1s both; }
+        input, select { background: var(--card); border: 1.5px solid #333; color: white; padding: 12px 14px; border-radius: 8px; outline: none; font-size: 0.9rem; transition: var(--transition); font-weight: 500; }
+        input:focus, select:focus { border-color: var(--neon); background: #0a0a0a; box-shadow: 0 0 10px rgba(255, 0, 60, 0.3); transform: scale(1.02); }
+        input::placeholder { color: var(--dim); opacity: 0.7; }
 
-        .table-wrapper { background: var(--card); border-radius: 12px; border: 1px solid #222; overflow-x: auto; overflow-y: visible; min-width: 0; width: 100%; box-sizing: border-box; margin: 0; padding: 0; }
-        table { width: auto; min-width: 100%; border-collapse: collapse; }
-        th { background: #0a0a0a; padding: 12px; text-align: center; color: var(--neon); font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid #222; font-weight: 600; letter-spacing: 0.5px; }
-        td { padding: 12px; border-bottom: 1px solid #1a1a1a; font-size: 0.9rem; color: #ccc; vertical-align: middle; text-align: left; font-weight: 500; }
+        .table-wrapper { background: var(--card); border-radius: 12px; border: 1px solid #222; overflow-x: auto; overflow-y: visible; min-width: 0; width: 100%; box-sizing: border-box; margin: 0; padding: 0; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); animation: slideUp 0.6s ease-out 0.2s both; }
+        table { width: 100%; border-collapse: collapse; table-layout: auto; }
+        th { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%); padding: 16px 12px; text-align: center; color: var(--neon); font-size: 0.8rem; text-transform: uppercase; border-bottom: 2px solid var(--neon); font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+        td { padding: 14px 12px; border-bottom: 1px solid #1a1a1a; font-size: 0.9rem; color: #ccc; vertical-align: middle; text-align: center; font-weight: 500; word-wrap: break-word; }
+        td:first-child { text-align: left; padding-left: 20px; }
+        td:nth-child(2) { text-align: center; }
+        td img { display: block; margin: 0 auto; border-radius: 50%; box-shadow: 0 2px 8px rgba(255, 0, 60, 0.2); }
+        tr { cursor: pointer; transition: var(--transition); }
+        tbody tr:hover { background-color: rgba(255, 0, 60, 0.08); transform: scale(1.01); }
+        tbody tr:active { background-color: rgba(255, 0, 60, 0.15); }
         
-        .status-pill { padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; text-align: center; }
-        .days-pill { padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-align: center; }
         .days-expired { background: #ff003c; color: #fff; }
         .days-warning { background: #f39c12; color: #000; }
         .days-ok { background: #2ecc71; color: #000; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: flex-start; justify-content: center; opacity: 0; transition: opacity 0.3s; overflow-y: auto; overflow-x: hidden; padding: 20px; box-sizing: border-box; }
-        .modal.show { display: flex; opacity: 1; }
-        .modal-content { background: #0a0a0a; width: calc(100% - 40px); max-width: calc(100vw - 40px); padding: 20px; border: 1px solid var(--neon); border-radius: 12px; overflow-x: auto; overflow-y: visible; min-width: 0; box-sizing: border-box; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: flex-start; justify-content: center; opacity: 0; transition: var(--transition); overflow-y: auto; overflow-x: hidden; padding: 20px; box-sizing: border-box; animation: fadeIn 0.4s ease-out; }
+        .modal.show { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out; }
+        .modal-content { background: #0a0a0a; width: calc(100% - 40px); max-width: 900px; padding: 30px; border: 1px solid var(--neon); border-radius: 12px; overflow-x: auto; overflow-y: visible; min-width: 0; box-sizing: border-box; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); animation: slideUp 0.4s ease-out; }
         
         .profile-layout { display: grid; grid-template-columns: 1fr; gap: 25px; width: 100%; box-sizing: border-box; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
@@ -50,14 +56,18 @@
         .label-text { color: var(--neon); font-size: 0.75rem; text-transform: uppercase; display: block; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
         .val-text { color: #fff; font-size: 0.9rem; font-weight: 500; line-height: 1.4; }
         
-        .profile-img-large { width: 120px; height: 120px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; background: #222; }
-        .btn-add { background: var(--neon); color: #fff; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; transition: transform 0.2s; text-align: center; line-height: 1.4; }
-        .btn-add:hover { transform: scale(1.05); }
+        .btn-add { background: linear-gradient(135deg, var(--neon) 0%, #ff1a50 100%); color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; transition: var(--transition); text-align: center; line-height: 1.4; box-shadow: 0 4px 12px rgba(255, 0, 60, 0.3); position: relative; overflow: hidden; }
+        .btn-add::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.2); transition: var(--transition); }
+        .btn-add:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(255, 0, 60, 0.4); }
+        .btn-add:hover::before { left: 100%; }
+        .btn-add:active { transform: translateY(-1px); }
         
-        .photo-upload-box { background: #181818; border: 1px dashed #333; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: border-color 0.3s; }
+        .photo-upload-box { background: linear-gradient(135deg, #181818 0%, #0a0a0a 100%); border: 2px dashed #333; border-radius: 10px; padding: 18px; text-align: center; cursor: pointer; transition: var(--transition); display: flex; flex-direction: column; gap: 8px; }
+        .photo-upload-box:hover { border-color: var(--neon); background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%); box-shadow: 0 0 15px rgba(255, 0, 60, 0.2); }
+        .photo-preview { width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--neon); object-fit: cover; margin: 0 auto; display: block; box-shadow: 0 4px 12px rgba(255, 0, 60, 0.2); transition: var(--transition); }
+        .photo-preview:hover { box-shadow: 0 6px 20px rgba(255, 0, 60, 0.4); }
+        .upload-label { color: var(--neon); font-size: 0.75rem; margin-top: 5px; font-weight: 600; }
         .photo-upload-box:hover { border-color: var(--neon); }
-        .photo-preview { width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--neon); object-fit: cover; margin: 10px auto; display: block; }
-        .upload-label { color: var(--dim); font-size: 0.7rem; margin-top: 5px; }
         
         /* Custom Calendar Styling */
         input[type="date"]::-webkit-calendar-picker-indicator {
@@ -73,6 +83,18 @@
             color: #fff;
         }
         
+        /* Webcam Modal */
+        .webcam-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; animation: fadeIn 0.3s ease-out; }
+        .webcam-modal.show { display: flex; animation: fadeIn 0.3s ease-out; }
+        .webcam-container { background: #0a0a0a; border: 2px solid var(--neon); border-radius: 12px; padding: 25px; max-width: 500px; width: 100%; box-sizing: border-box; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); animation: slideUp 0.3s ease-out; }
+        .webcam-container h3 { color: var(--neon); font-family: Orbitron; font-size: 0.9rem; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px; }
+        #webcamVideo { width: 100%; max-width: 100%; border-radius: 8px; border: 2px solid #333; background: #000; margin-bottom: 15px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); }
+        .webcam-controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .webcam-btn { background: linear-gradient(135deg, var(--neon) 0%, #ff1a50 100%); color: #fff; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; transition: var(--transition); box-shadow: 0 4px 12px rgba(255, 0, 60, 0.3); }
+        .webcam-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(255, 0, 60, 0.4); }
+        .webcam-btn.secondary { background: linear-gradient(135deg, #333 0%, #444 100%); color: var(--neon); }
+        .webcam-btn.secondary:hover { background: linear-gradient(135deg, #444 0%, #555 100%); }
+        
         /* Loading Overlay */
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 9999; align-items: center; justify-content: center; }
         .loading-overlay.show { display: flex; }
@@ -82,26 +104,34 @@
         .loading-text { color: var(--neon); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; }
         
         /* Login Screen */
-        .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; width: 100vw; background: var(--bg); position: fixed; top: 0; left: 0; }
-        .login-box { background: var(--card); border: 2px solid var(--neon); border-radius: 15px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); }
+        .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; width: 100vw; background: var(--bg); position: fixed; top: 0; left: 0; animation: fadeIn 0.5s ease-out; }
+        .login-box { background: var(--card); border: 2px solid var(--neon); border-radius: 15px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 0 40px rgba(255, 0, 60, 0.4); animation: slideUp 0.5s ease-out; }
         .login-logo { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; text-align: center; margin-bottom: 10px; color: #fff; }
-        .login-logo span { color: var(--neon); }
-        .login-subtitle { text-align: center; color: var(--dim); font-size: 0.75rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
-        .login-input { width: 100%; padding: 15px; margin-bottom: 20px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: white; font-size: 0.9rem; outline: none; transition: border-color 0.3s; box-sizing: border-box; }
-        .login-input:focus { border-color: var(--neon); }
+        .login-logo span { color: var(--neon); text-shadow: 0 0 20px rgba(255, 0, 60, 0.5); }
+        .login-subtitle { text-align: center; color: var(--dim); font-size: 0.75rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; animation: fadeIn 0.7s ease-out; }
+        .login-input { width: 100%; padding: 15px; margin-bottom: 20px; background: linear-gradient(135deg, #0a0a0a 0%, #050505 100%); border: 1.5px solid #333; border-radius: 8px; color: white; font-size: 0.9rem; outline: none; transition: var(--transition); box-sizing: border-box; }
+        .login-input:focus { border-color: var(--neon); background: #000; box-shadow: 0 0 15px rgba(255, 0, 60, 0.3); transform: scale(1.02); }
         .password-wrapper { position: relative; margin-bottom: 20px; width: 100%; }
         .password-wrapper input { margin-bottom: 0; padding-right: 45px; width: 100%; }
-        .password-toggle { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--dim); font-size: 1.1rem; user-select: none; transition: color 0.3s; }
-        .password-toggle:hover { color: var(--neon); }
-        .login-btn { width: 100%; padding: 15px; background: var(--neon); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; cursor: pointer; transition: all 0.3s; position: relative; }
-        .login-btn:hover:not(:disabled) { transform: scale(1.02); }
-        .login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .password-toggle { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--dim); font-size: 1.1rem; user-select: none; transition: var(--transition); }
+        .password-toggle:hover { color: var(--neon); transform: translateY(-50%) scale(1.2); }
+        .login-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--neon) 0%, #ff1a50 100%); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; cursor: pointer; transition: var(--transition); position: relative; box-shadow: 0 4px 15px rgba(255, 0, 60, 0.3); }
+        .login-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(255, 0, 60, 0.5); }
+        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .login-btn.loading { padding-left: 45px; }
         .login-btn .spinner-small { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, 0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
         .login-btn.loading .spinner-small { display: block; }
-        .login-error { background: rgba(255, 0, 60, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.8rem; text-align: center; display: none; }
+        .login-error { background: rgba(255, 0, 60, 0.1); border: 1px solid var(--neon); color: var(--neon); padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 0.8rem; text-align: center; display: none; animation: slideUp 0.3s ease-out; }
         .app-container { display: none; }
 
+        /* ANIMATIONS */
+        @keyframes slideInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 5px rgba(255, 0, 60, 0.3); } 50% { box-shadow: 0 0 20px rgba(255, 0, 60, 0.6); } }
+        
         /* CUSTOM SCROLLBAR STYLING */
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: #000; }
@@ -112,25 +142,29 @@
         * { scrollbar-color: var(--neon) #000; scrollbar-width: thin; }
 
         /* RESPONSIVE DESIGN */
-        /* Mobile First - Extra Small (320px - 480px) */
+        /* Mobile First - Extra Small (320px - 640px) */
         @media (max-width: 640px) {
             body { flex-direction: column; height: auto; min-height: 100vh; overflow: auto; }
-            .sidebar { width: 100%; padding: 15px; border-right: none; border-bottom: 1px solid var(--neon); max-height: 120px; flex-direction: row; gap: 10px; overflow-x: auto; flex-wrap: wrap; align-content: flex-start; }
-            .logo { font-size: 1rem; margin-bottom: 0; margin-right: 10px; min-width: fit-content; }
-            .nav-item { flex: 1; min-width: 120px; padding: 8px 10px; font-size: 0.7rem; margin-bottom: 5px; }
-            .main { padding: 15px; }
-            .dashboard-row { grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
-            .dash-card { padding: 10px; }
-            .dash-label { font-size: 0.6rem; }
-            .dash-val { font-size: 1rem; }
-            .controls { gap: 8px; }
-            input, select { padding: 8px; font-size: 0.75rem; }
-            .table-wrapper { border-radius: 8px; }
-            table { font-size: 0.7rem; }
-            th { padding: 8px; font-size: 0.6rem; }
-            td { padding: 6px; font-size: 0.7rem; }
-            .modal { padding: 10px; }
-            .modal-content { width: 98%; padding: 15px; border-radius: 8px; }
+            .sidebar { width: 100%; padding: 12px; border-right: none; border-bottom: 2px solid var(--neon); max-height: auto; flex-direction: row; gap: 8px; overflow-x: auto; flex-wrap: wrap; align-content: flex-start; -webkit-overflow-scrolling: touch; }
+            .logo { font-size: 1.2rem; margin-bottom: 0; margin-right: 8px; min-width: fit-content; }
+            .nav-item { flex: 1; min-width: 100px; padding: 10px 12px; font-size: 0.7rem; margin-bottom: 5px; border-radius: 6px; }
+            .main { padding: 12px; }
+            .dashboard-row { grid-template-columns: 1fr; gap: 12px; margin-bottom: 15px; }
+            .dash-card { padding: 12px 15px; border-radius: 10px; }
+            .dash-label { font-size: 0.65rem; }
+            .dash-val { font-size: 1.3rem; margin-top: 8px; }
+            .controls { gap: 6px; margin-bottom: 12px; }
+            input, select { padding: 10px 12px; font-size: 0.8rem; flex: 1; min-width: 100px; }
+            .table-wrapper { border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+            table { font-size: 0.7rem; display: table; min-width: 100%; }
+            thead { display: table-header-group; }
+            tbody { display: table-row-group; }
+            tr { display: table-row; }
+            th { padding: 10px 8px; font-size: 0.6rem; min-width: 70px; word-wrap: break-word; }
+            td { padding: 8px 6px; font-size: 0.7rem; min-width: 70px; }
+            td:first-child { padding-left: 10px; }
+            .modal { padding: 8px; }
+            .modal-content { width: 96%; padding: 16px; border-radius: 10px; max-width: 100%; }
             .profile-img-large { width: 80px; height: 80px; }
             .photo-preview { width: 70px; height: 70px; }
             .btn-add { padding: 8px 12px; font-size: 0.6rem; }
@@ -142,27 +176,30 @@
             .login-input { padding: 12px; font-size: 0.8rem; }
             .label-text { font-size: 0.5rem; }
             .val-text { font-size: 0.75rem; }
+            .status-pill { font-size: 0.65rem; padding: 4px 6px; }
+            .days-pill { font-size: 0.65rem; padding: 4px 6px; }
         }
 
         /* Tablet (641px - 1024px) */
         @media (max-width: 1024px) and (min-width: 641px) {
-            .sidebar { width: 160px; padding: 15px; }
-            .logo { font-size: 1.2rem; margin-bottom: 30px; }
-            .nav-item { padding: 10px 12px; font-size: 0.75rem; }
+            .sidebar { width: 180px; padding: 18px; border-right: 2px solid var(--neon); }
+            .logo { font-size: 1.4rem; margin-bottom: 35px; }
+            .nav-item { padding: 11px 13px; font-size: 0.8rem; }
             .main { padding: 20px; }
-            .dashboard-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-            .dash-label { font-size: 0.6rem; }
-            .dash-val { font-size: 1rem; }
-            .controls { gap: 10px; }
-            input, select { padding: 8px; font-size: 0.75rem; }
-            table { font-size: 0.75rem; }
-            th { padding: 10px; font-size: 0.6rem; }
-            td { padding: 8px; font-size: 0.75rem; }
-            .modal-content { width: 90%; }
+            .dashboard-row { grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+            .dash-card { padding: 18px; }
+            .dash-label { font-size: 0.7rem; }
+            .dash-val { font-size: 1.5rem; }
+            .controls { gap: 10px; margin-bottom: 15px; }
+            input, select { padding: 10px 12px; font-size: 0.85rem; }
+            table { font-size: 0.8rem; }
+            th { padding: 12px; font-size: 0.7rem; }
+            td { padding: 10px; font-size: 0.8rem; }
+            .modal-content { width: 92%; padding: 25px; max-width: 800px; }
             .profile-img-large { width: 100px; height: 100px; }
             .form-grid { grid-template-columns: repeat(2, 1fr); }
-            .chart-grid { grid-template-columns: 1fr; }
-            .btn-add { padding: 8px 14px; font-size: 0.65rem; }
+            .chart-grid { grid-template-columns: repeat(2, 1fr); }
+            .btn-add { padding: 10px 16px; font-size: 0.75rem; }
         }
 
         /* Small Desktop (1025px - 1280px) */
@@ -239,6 +276,7 @@
     <div class="logo">FIT<span>.HIVE</span></div>
     <div class="nav-item active" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
     <div class="nav-item" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
+    <div class="nav-item" onclick="loadTab('Enquiry', this)">Enquiry</div>
     <button class="btn-add" style="margin-top:auto; margin-bottom:10px;" onclick="openAddModal()">+ New Client</button>
     <button class="btn-add" style="background:#333; font-size:0.65rem;" onclick="logout()">🚪 Logout</button>
 </div>
@@ -346,6 +384,19 @@
     </div>
 </div>
 
+<!-- Webcam Capture Modal -->
+<div id="webcamModal" class="webcam-modal">
+    <div class="webcam-container">
+        <h3>📸 Capture Photo from Webcam</h3>
+        <p style="font-size: 12px; color: #999; margin-bottom: 10px;">Allow camera access when prompted by your browser</p>
+        <video id="webcamVideo" autoplay playsinline muted style="width:100%; border-radius:8px; background:#000; margin-bottom:15px;"></video>
+        <div class="webcam-controls">
+            <button type="button" class="webcam-btn" onclick="captureWebcamPhoto()">📸 Capture</button>
+            <button type="button" class="webcam-btn secondary" onclick="closeWebcamModal()">✕ Cancel</button>
+        </div>
+    </div>
+</div>
+
 </div><!-- End App Container -->
 
 <script>
@@ -375,6 +426,7 @@
     }
 
     const headers = {
+        "Enquiry": ["Name", "Expected joining", "Phone Number", "Preferred pakage"],
         "Regular Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", "Start Weight", "Current Weight", "Target Weight"],
         "PT Tracker": ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries", 
         "Weight Day 1", "Weight Week 1", "Weight Week 4", "Weight Week 8", "Weight Week 12",
@@ -405,12 +457,19 @@
             const previewId = h === "Photo Link" ? "photoPreview" : `preview${k}`;
             const labelId = h === "Photo Link" ? "uploadLabel" : `label${k}`;
             const inputId = h === "Photo Link" ? "photoLinkInput" : `input${k}`;
+            const webcamBtnId = h === "Photo Link" ? "webcamBtnPhoto" : `webcamBtn${k}`;
             const onchangeHandler = h === "Photo Link" ? "handlePhotoUpload(event)" : `handleProgressPhotoUpload(event, '${k}', '${previewId}', '${labelId}', '${inputId}')`;
+            const onWebcamClick = h === "Photo Link" ? "openWebcamCapture(event)" : `openWebcamCapture(event, '${k}', '${previewId}', '${labelId}', '${inputId}')`;
             
-            return `<div class="photo-upload-box" onclick="document.getElementById('${uploadId}').click()">
+            return `<div class="photo-upload-box" style="position:relative; cursor:pointer; display:flex; flex-direction:column; gap:8px;">
                         <img id="${previewId}" src="${fixImageUrl(value)}" class="photo-preview" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" style="width:80px; height:80px;">
-                        <div class="upload-label" id="${labelId}">${h === "Photo Link" ? "Click to upload photo" : "Upload"}</div>
-                        <input type="file" id="${uploadId}" accept="image/*" style="display:none;" onchange="${onchangeHandler}">
+                        <div class="upload-label" id="${labelId}">${h === "Photo Link" ? "📷 Upload photo" : "Upload"}</div>
+                        <div style="font-size:0.65rem; color:#888; font-style:italic;">Camera or File</div>
+                        <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+                            <button type="button" class="btn-add" style="padding:6px 12px; font-size:0.65rem; background:var(--neon); flex:1; min-width:70px;" onclick="document.getElementById('${uploadId}').click(); return false;">📁 File</button>
+                            <button type="button" id="${webcamBtnId}" class="btn-add" style="padding:6px 12px; font-size:0.65rem; background:#00d4ff; color:#000; flex:1; min-width:70px;" onclick="${onWebcamClick}; return false;">🎥 Webcam</button>
+                        </div>
+                        <input type="file" id="${uploadId}" accept="image/*" style="display:none;" onchange="${onchangeHandler}" capture>
                         <input type="hidden" name="${k}" id="${inputId}" value="${value || ''}">
                     </div>`;
         } else if (h === "Join Date" || h === "Expiry Date") {
@@ -495,17 +554,25 @@
     function updateDashboard() {
         const todayStr = toISODate(new Date());
         let paid = 0, expToday = 0, overdue = 0;
-        masterData.forEach(c => {
-            if((c.PaymentStatus || "").toLowerCase() === 'paid') paid++;
-            const expStr = toISODate(c.ExpiryDate);
-            if(expStr) {
-                if(expStr === todayStr) expToday++;
-                else if(expStr < todayStr) overdue++;
-            }
-        });
-        document.getElementById('statPaid').innerText = paid;
-        document.getElementById('statExpToday').innerText = expToday;
-        document.getElementById('statOverdue').innerText = overdue;
+        
+        if (currentSheet === "Enquiry") {
+            // For Enquiry sheet, show total enquiries
+            document.getElementById('statPaid').innerText = masterData.length;
+            document.getElementById('statExpToday').innerText = 0;
+            document.getElementById('statOverdue').innerText = 0;
+        } else {
+            masterData.forEach(c => {
+                if((c.PaymentStatus || "").toLowerCase() === 'paid') paid++;
+                const expStr = toISODate(c.ExpiryDate);
+                if(expStr) {
+                    if(expStr === todayStr) expToday++;
+                    else if(expStr < todayStr) overdue++;
+                }
+            });
+            document.getElementById('statPaid').innerText = paid;
+            document.getElementById('statExpToday').innerText = expToday;
+            document.getElementById('statOverdue').innerText = overdue;
+        }
     }
 
     function resetFilters() {
@@ -548,19 +615,26 @@
 
     function renderTable(data) {
         const today = new Date(); today.setHours(0,0,0,0);
-        const displayKeys = currentSheet === "PT Tracker" 
-            ? ["Client ID", "Photo Link", "Full Name", "Training Slot", "Expiry Date", "Days Left", "Payment Status"]
-            : ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Expiry Date", "Days Left", "Payment Status"];
+        let displayKeys;
+        if (currentSheet === "Enquiry") {
+            displayKeys = ["Name", "Expected joining", "Phone Number", "Preferred pakage"];
+        } else if (currentSheet === "PT Tracker") {
+            displayKeys = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Expiry Date", "Days Left", "Payment Status"];
+        } else {
+            displayKeys = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Expiry Date", "Days Left", "Payment Status"];
+        }
 
         document.getElementById('tableHead').innerHTML = displayKeys.map(h => `<th>${h}</th>`).join('');
         document.getElementById('tableBody').innerHTML = data.map((row, idx) => {
-            const exp = new Date(row.ExpiryDate); exp.setHours(0,0,0,0);
-            const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-            
             let daysHtml = "";
-            if (diff < 0) daysHtml = `<span class="days-pill days-expired">Expired</span>`;
-            else if (diff === 0) daysHtml = `<span class="days-pill days-warning">Ends Today</span>`;
-            else daysHtml = `<span class="days-pill days-ok">${diff} Days Left</span>`;
+            
+            if (currentSheet !== "Enquiry") {
+                const exp = new Date(row.ExpiryDate); exp.setHours(0,0,0,0);
+                const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+                if (diff < 0) daysHtml = `<span class="days-pill days-expired">Expired</span>`;
+                else if (diff === 0) daysHtml = `<span class="days-pill days-warning">Ends Today</span>`;
+                else daysHtml = `<span class="days-pill days-ok">${diff} Days Left</span>`;
+            }
 
             return `<tr onclick="viewDetails(${idx})">
                 ${displayKeys.map(k => {
@@ -578,10 +652,16 @@
     function viewDetails(idx) {
         const c = filteredData[idx];
         currentEditRow = c.rowNumber;
-        document.getElementById('profileHeader').innerHTML = `
-            <img src="${fixImageUrl(c.PhotoLink)}" class="profile-img-large">
-            <div><h1 style="margin:0; font-family:Orbitron;">${c.FullName}</h1>
-            <span>ID: ${c.ClientID} ${c.TrainingSlot ? '| Slot: '+c.TrainingSlot : ''}</span></div>`;
+        
+        if (currentSheet === "Enquiry") {
+            document.getElementById('profileHeader').innerHTML = `<h1 style="margin:0; font-family:Orbitron;">${c.Name || 'N/A'}</h1>`;
+            document.getElementById('progressSide').style.display = 'none';
+        } else {
+            document.getElementById('profileHeader').innerHTML = `
+                <img src="${fixImageUrl(c.PhotoLink)}" class="profile-img-large">
+                <div><h1 style="margin:0; font-family:Orbitron;">${c.FullName}</h1>
+                <span>ID: ${c.ClientID} ${c.TrainingSlot ? '| Slot: '+c.TrainingSlot : ''}</span></div>`;
+        }
 
         document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
             const k = h.replace(/[^a-zA-Z0-9]/g, '');
@@ -604,13 +684,17 @@
             return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${displayValue}</div></div>`;
         }).join('');
 
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit Client</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+        if (currentSheet === "Enquiry") {
+            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+        } else {
+            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit Client</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+        }
         
         // Only render progress charts for PT Tracker
         if (currentSheet === "PT Tracker") {
             document.getElementById('progressSide').style.display = 'block';
             renderProgress(c);
-        } else {
+        } else if (currentSheet !== "Enquiry") {
             document.getElementById('progressSide').style.display = 'none';
         }
         
@@ -812,7 +896,14 @@
     function enableEdit(idx) {
         const c = filteredData[idx];
         
-        if (currentSheet === "PT Tracker") {
+        if (currentSheet === "Enquiry") {
+            // Enquiry sheet simple form
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+                const k = h.replace(/[^a-zA-Z0-9]/g, '');
+                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
+            }).join('');
+            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('edit')">Save Changes</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+        } else if (currentSheet === "PT Tracker") {
             // Group PT measurements by time period in table format
             const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
             const measurements = [
@@ -928,10 +1019,18 @@
     }
 
     function openAddModal() {
-        document.getElementById('profileHeader').innerHTML = `<h1>ADD CLIENT</h1>`;
+        document.getElementById('profileHeader').innerHTML = `<h1>${currentSheet === 'Enquiry' ? 'ADD ENQUIRY' : 'ADD CLIENT'}</h1>`;
         const nextClientID = generateNextClientID();
         
-        if (currentSheet === "PT Tracker") {
+        if (currentSheet === "Enquiry") {
+            // Enquiry sheet simple form
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+                const fieldValue = '';
+                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
+            }).join('');
+            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Submit Enquiry</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+            document.getElementById('progressSide').style.display = 'none';
+        } else if (currentSheet === "PT Tracker") {
             // Group PT measurements by time period in table format
             const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
             const measurements = [
@@ -1020,6 +1119,201 @@
     }
 
     let uploadedPhotoData = null;
+    let webcamStream = null;
+    let currentWebcamFieldInfo = null;
+
+    // Webcam Functions
+    async function openWebcamCapture(event, fieldKey = null, previewId = null, labelId = null, inputId = null) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        currentWebcamFieldInfo = { fieldKey, previewId, labelId, inputId };
+        
+        try {
+            const video = document.getElementById('webcamVideo');
+            if (!video) return;
+            
+            // Progressive constraint strategy - start simple, get more specific if needed
+            let lastError = null;
+            
+            // Step 1: Try with minimal constraints (just video: true)
+            try {
+                console.log('Attempting basic video constraint...');
+                webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: false 
+                });
+            } catch (e1) {
+                lastError = e1;
+                console.warn('Basic constraint failed:', e1.message);
+                
+                // Step 2: Try without audio
+                try {
+                    console.log('Attempting video-only constraint...');
+                    webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: {} 
+                    });
+                } catch (e2) {
+                    lastError = e2;
+                    console.warn('Video-only constraint failed:', e2.message);
+                    throw e2;
+                }
+            }
+            
+            video.srcObject = webcamStream;
+            
+            // Wait for video to load and play
+            video.addEventListener('loadedmetadata', () => {
+                console.log('Video loaded:', video.videoWidth, 'x', video.videoHeight);
+                video.play().catch(err => console.error('Play error:', err));
+            }, { once: true });
+            
+            // Show webcam modal
+            document.getElementById('webcamModal').classList.add('show');
+            
+        } catch (error) {
+            console.error('Webcam error details:', error);
+            let errorMsg = 'Unable to access webcam.';
+            let suggestions = 'Please try:\n- Refresh the page\n- Check camera is connected\n- Allow camera access in browser\n- Close other apps using camera';
+            
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMsg = '❌ Camera permission denied';
+                suggestions = 'Please grant camera permission when prompted by your browser.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMsg = '❌ No camera found';
+                suggestions = 'Please check:\n- Camera is connected\n- Camera drivers are installed\n- Camera is not in use by another app';
+            } else if (error.name === 'NotReadableError') {
+                errorMsg = '❌ Camera in use or blocked';
+                suggestions = 'Close other apps using the camera and try again.';
+            } else if (error.name === 'SecurityError') {
+                errorMsg = '❌ Browser security blocked access';
+                suggestions = 'Make sure you are using HTTPS (on production) or localhost';
+            } else if (error.name === 'TypeError') {
+                errorMsg = '❌ Camera not supported';
+                suggestions = 'Your browser may not support camera access. Try Chrome, Firefox, or Edge.';
+            }
+            
+            alert(errorMsg + '\n\n' + suggestions + '\n\nError: ' + error.message);
+        }
+    }
+
+    function captureWebcamPhoto() {
+        const video = document.getElementById('webcamVideo');
+        
+        if (!video || !video.srcObject) {
+            alert('Webcam not ready. Please try again.');
+            return;
+        }
+        
+        if (video.videoWidth === 0 || video.videoHeight === 0) {
+            alert('Video not loaded yet. Please wait a moment and try again.');
+            return;
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        // Convert canvas to blob and process
+        canvas.toBlob(async (blob) => {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64Data = e.target.result.split(',')[1];
+                const file = new File([blob], 'webcam_photo.jpg', { type: 'image/jpeg' });
+                
+                closeWebcamModal();
+                
+                // Process the captured photo
+                if (currentWebcamFieldInfo && currentWebcamFieldInfo.previewId) {
+                    // Progress photo
+                    await processWebcamUpload(base64Data, file.name, 'image/jpeg', 
+                        currentWebcamFieldInfo.previewId, 
+                        currentWebcamFieldInfo.labelId, 
+                        currentWebcamFieldInfo.inputId, 
+                        currentWebcamFieldInfo.fieldKey);
+                } else {
+                    // Main photo
+                    await processWebcamUpload(base64Data, file.name, 'image/jpeg', 'photoPreview', 'uploadLabel', 'photoLinkInput');
+                }
+            };
+            reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.9);
+    }
+
+    function closeWebcamModal() {
+        document.getElementById('webcamModal').classList.remove('show');
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+        }
+        currentWebcamFieldInfo = null;
+    }
+
+    async function processWebcamUpload(base64Data, fileName, mimeType, previewId, labelId, inputId, fieldKey = null) {
+        const uploadLabel = document.getElementById(labelId);
+        const photoPreview = document.getElementById(previewId);
+        const photoLinkInput = document.getElementById(inputId);
+        
+        if (!uploadLabel || !photoPreview || !photoLinkInput) return;
+        
+        const originalText = uploadLabel.textContent;
+        uploadLabel.textContent = 'Uploading...';
+        uploadLabel.style.color = '#f1c40f';
+        
+        showLoading('UPLOADING PHOTO...');
+        
+        const uploadData = {
+            action: 'uploadPhoto',
+            fileName: fileName,
+            mimeType: mimeType,
+            data: base64Data
+        };
+        
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(uploadData)
+            });
+            const result = await response.json();
+            
+            if (result.success && result.url) {
+                photoLinkInput.value = result.url;
+                photoPreview.src = result.url;
+                uploadLabel.textContent = '✓ Photo captured!';
+                uploadLabel.style.color = '#00ff00';
+                console.log('Webcam photo uploaded:', result.url);
+                hideLoading();
+            } else {
+                uploadLabel.textContent = originalText;
+                uploadLabel.style.color = '';
+                alert('Upload failed: ' + (result.error || 'Unknown error'));
+                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                hideLoading();
+            }
+        } catch (error) {
+            uploadLabel.textContent = originalText;
+            uploadLabel.style.color = '';
+            alert('Upload error: ' + error.message);
+            photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+            hideLoading();
+        }
+    }
+
+    function openCameraOption() {
+        const uploadInput = document.getElementById('photoUpload');
+        const cameraBtn = document.getElementById('cameraBtnPhoto');
+        if (!cameraBtn) return;
+        
+        // Show camera or file picker based on device capability
+        uploadInput.accept = 'image/*';
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            // On mobile, allow both camera and gallery
+            uploadInput.capture = 'environment';
+        }
+        uploadInput.click();
+    }
 
     async function handlePhotoUpload(event) {
         const file = event.target.files[0];
