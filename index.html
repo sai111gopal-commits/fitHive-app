@@ -593,7 +593,7 @@
 
         filteredData = masterData.filter(c => {
             const matchName = (c.FullName || "").toLowerCase().includes(query);
-            const matchPhone = (c.Phone || "").toLowerCase().includes(query);
+            const matchPhone = String(c.Phone || "").toLowerCase().includes(query);
             const matchSearch = matchName || matchPhone;
             const matchStatus = (statusSel === "All") || (c.PaymentStatus === statusSel);
             const exp = new Date(c.ExpiryDate); exp.setHours(0,0,0,0);
@@ -627,7 +627,6 @@
         document.getElementById('tableHead').innerHTML = displayKeys.map(h => `<th>${h}</th>`).join('');
         document.getElementById('tableBody').innerHTML = data.map((row, idx) => {
             let daysHtml = "";
-            
             if (currentSheet !== "Enquiry") {
                 const exp = new Date(row.ExpiryDate); exp.setHours(0,0,0,0);
                 const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
@@ -640,7 +639,8 @@
                 ${displayKeys.map(k => {
                     if(k === "Days Left") return `<td>${daysHtml}</td>`;
                     const key = k.replace(/[^a-zA-Z0-9]/g, '');
-                    const val = row[key] || '-';
+                    let val = row[key] || '-';
+                    if (k === "Join Date" || k === "Expiry Date") val = toISODate(row[key]) || '-';
                     if(k === "Photo Link") return `<td><img src="${fixImageUrl(val)}" style="width:35px;height:35px;border-radius:50%;border:1px solid var(--neon);"></td>`;
                     if(k === "Payment Status") return `<td><span class="status-pill status-${val.toLowerCase()}">${val}</span></td>`;
                     return `<td>${val}</td>`;
@@ -666,12 +666,11 @@
         document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
             const k = h.replace(/[^a-zA-Z0-9]/g, '');
             let displayValue = c[k] || '-';
-            
+            if (h === "Join Date" || h === "Expiry Date") displayValue = toISODate(c[k]) || '-';
             // Skip progress photo fields in regular field list for PT Tracker (they're shown below charts)
             if (currentSheet === "PT Tracker" && h.startsWith("Progress Photo")) {
                 return '';
             }
-            
             // Show photo thumbnail and link for Photo Link field
             if (h === "Photo Link") {
                 if (displayValue && displayValue !== '-') {
@@ -680,7 +679,6 @@
                     return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">-</div></div>`;
                 }
             }
-            
             return `<div class="field-box"><label class="label-text">${h}</label><div class="val-text">${displayValue}</div></div>`;
         }).join('');
 
@@ -1546,4 +1544,3 @@
 </script>
 </body>
 </html>
-
