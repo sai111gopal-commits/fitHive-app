@@ -22,6 +22,31 @@
         .dash-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(255, 0, 60, 0.2); }
         .dash-label { font-size: 0.75rem; text-transform: uppercase; color: var(--dim); letter-spacing: 1px; font-weight: 600; text-align: center; }
         .dash-val { font-family: 'Orbitron'; font-size: 1.8rem; margin-top: 12px; color: var(--neon); text-align: center; font-weight: bold; }
+        .monthly-summary-card { grid-column: 1 / -1; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.08); border-top: none; background: radial-gradient(circle at top right, rgba(0, 212, 255, 0.16), transparent 28%), linear-gradient(135deg, #121212 0%, #1a1a1a 55%, #0c0c0c 100%); position: relative; overflow: hidden; }
+        .monthly-summary-card::before { content: ''; position: absolute; inset: 0; border-radius: 12px; padding: 1px; background: linear-gradient(135deg, rgba(255, 0, 60, 0.45), rgba(0, 212, 255, 0.35)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+        .monthly-summary-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; position: relative; z-index: 1; }
+        .monthly-summary-title { font-family: 'Orbitron', sans-serif; font-size: 1rem; letter-spacing: 1.4px; text-transform: uppercase; color: #fff; }
+        .monthly-summary-subtitle { color: #959595; font-size: 0.8rem; margin-top: 6px; }
+        .monthly-summary-period { color: var(--neon); font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; background: rgba(255, 0, 60, 0.1); border: 1px solid rgba(255, 0, 60, 0.25); white-space: nowrap; }
+        .monthly-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; position: relative; z-index: 1; }
+        .monthly-stat-tile { padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04); backdrop-filter: blur(6px); transition: var(--transition); }
+        .monthly-stat-tile:hover { transform: translateY(-3px); border-color: rgba(255, 0, 60, 0.28); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28); }
+        .monthly-stat-kicker { color: #8a8a8a; font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; }
+        .monthly-stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.7rem; color: #fff; margin-top: 10px; }
+        .monthly-stat-meta { margin-top: 8px; font-size: 0.78rem; color: #a7a7a7; }
+        .monthly-stat-value.joins { color: #00d4ff; }
+        .monthly-stat-value.expiries { color: #ff6b8c; }
+        .monthly-stat-value.net-positive { color: #2ecc71; }
+        .monthly-stat-value.net-negative { color: #f39c12; }
+        .monthly-trend-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; position: relative; z-index: 1; }
+        .monthly-trend-chip { padding: 14px 12px; border-radius: 14px; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.06); transition: var(--transition); }
+        .monthly-trend-chip:hover { transform: translateY(-2px); border-color: rgba(0, 212, 255, 0.28); }
+        .monthly-trend-month { font-family: 'Orbitron', sans-serif; color: #f2f2f2; font-size: 0.75rem; margin-bottom: 8px; }
+        .monthly-trend-metric { font-size: 0.78rem; color: #9f9f9f; display: flex; justify-content: space-between; gap: 8px; }
+        .monthly-trend-metric strong { font-weight: 700; }
+        .monthly-trend-joins strong { color: #00d4ff; }
+        .monthly-trend-expiries strong { color: #ff6b8c; }
+        .monthly-empty { position: relative; z-index: 1; padding: 18px; border-radius: 14px; border: 1px dashed rgba(255, 255, 255, 0.12); color: #9f9f9f; text-align: center; font-size: 0.85rem; }
 
         .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; min-width: 0; width: 100%; padding: 0; box-sizing: border-box; animation: slideUp 0.5s ease-out 0.1s both; }
         input, select { background: var(--card); border: 1.5px solid #333; color: white; padding: 12px 14px; border-radius: 8px; outline: none; font-size: 0.9rem; transition: var(--transition); font-weight: 500; }
@@ -45,9 +70,13 @@
 
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; align-items: flex-start; justify-content: center; opacity: 0; transition: var(--transition); overflow-y: auto; overflow-x: hidden; padding: 20px; box-sizing: border-box; animation: fadeIn 0.4s ease-out; }
         .modal.show { display: flex; opacity: 1; animation: fadeIn 0.4s ease-out; }
-        .modal-content { background: #0a0a0a; width: calc(100% - 40px); max-width: 900px; padding: 30px; border: 1px solid var(--neon); border-radius: 12px; overflow-x: auto; overflow-y: visible; min-width: 0; box-sizing: border-box; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); animation: slideUp 0.4s ease-out; }
+        .modal-content { background: #0a0a0a; width: calc(100% - 40px); max-width: 900px; padding: 30px; border: 1px solid var(--neon); border-radius: 12px; overflow-x: auto; overflow-y: visible; min-width: 0; box-sizing: border-box; box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); animation: slideUp 0.4s ease-out; display: flex; flex-direction: column; }
         
         .profile-layout { display: grid; grid-template-columns: 1fr; gap: 25px; width: 100%; box-sizing: border-box; }
+        .modal-footer { margin-top: 28px; display: flex; justify-content: flex-end; gap: 12px; position: sticky; bottom: 0; padding-top: 18px; background: linear-gradient(180deg, rgba(10, 10, 10, 0), rgba(10, 10, 10, 0.92) 26%, rgba(10, 10, 10, 1) 100%); border-top: 1px solid rgba(255, 255, 255, 0.08); z-index: 3; }
+        .modal-footer .btn-add { min-width: 132px; }
+        .btn-secondary { background: linear-gradient(135deg, #242424 0%, #3a3a3a 100%); color: #f5f5f5; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
+        .btn-secondary:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.42); }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
         .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .chart-box { background: #0e0e0e; padding: 10px; border-radius: 8px; border: 1px solid #222; }
@@ -153,6 +182,11 @@
             .dash-card { padding: 12px 15px; border-radius: 10px; }
             .dash-label { font-size: 0.65rem; }
             .dash-val { font-size: 1.3rem; margin-top: 8px; }
+            .monthly-summary-card { padding: 16px; }
+            .monthly-summary-header { flex-direction: column; align-items: flex-start; }
+            .monthly-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+            .monthly-trend-strip { grid-template-columns: 1fr; }
+            .monthly-stat-value { font-size: 1.3rem; }
             .controls { gap: 6px; margin-bottom: 12px; }
             input, select { padding: 10px 12px; font-size: 0.8rem; flex: 1; min-width: 100px; }
             .table-wrapper { border-radius: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
@@ -165,6 +199,8 @@
             td:first-child { padding-left: 10px; }
             .modal { padding: 8px; }
             .modal-content { width: 96%; padding: 16px; border-radius: 10px; max-width: 100%; }
+            .modal-footer { position: sticky; bottom: 0; flex-direction: column-reverse; }
+            .modal-footer .btn-add { width: 100%; min-width: 0; }
             .profile-img-large { width: 80px; height: 80px; }
             .photo-preview { width: 70px; height: 70px; }
             .btn-add { padding: 8px 12px; font-size: 0.6rem; }
@@ -190,12 +226,15 @@
             .dash-card { padding: 18px; }
             .dash-label { font-size: 0.7rem; }
             .dash-val { font-size: 1.5rem; }
+            .monthly-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .monthly-trend-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .controls { gap: 10px; margin-bottom: 15px; }
             input, select { padding: 10px 12px; font-size: 0.85rem; }
             table { font-size: 0.8rem; }
             th { padding: 12px; font-size: 0.7rem; }
             td { padding: 10px; font-size: 0.8rem; }
             .modal-content { width: 92%; padding: 25px; max-width: 800px; }
+            .modal-footer { flex-wrap: wrap; }
             .profile-img-large { width: 100px; height: 100px; }
             .form-grid { grid-template-columns: repeat(2, 1fr); }
             .chart-grid { grid-template-columns: repeat(2, 1fr); }
@@ -274,18 +313,56 @@
 
 <div class="sidebar">
     <div class="logo">FIT<span>.HIVE</span></div>
-    <div class="nav-item active" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
-    <div class="nav-item" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
-    <div class="nav-item" onclick="loadTab('Enquiry', this)">Enquiry</div>
+    <div class="nav-item active" data-sheet="Regular Tracker" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
+    <div class="nav-item" data-sheet="PT Tracker" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
+    <div class="nav-item" data-sheet="Enquiry" onclick="loadTab('Enquiry', this)">Enquiry</div>
     <button class="btn-add" style="margin-top:auto; margin-bottom:10px;" onclick="openAddModal()">+ New Client</button>
     <button class="btn-add" style="background:#333; font-size:0.65rem;" onclick="logout()">🚪 Logout</button>
 </div>
 
 <div class="main">
     <div class="dashboard-row">
-        <div class="dash-card" style="border-top-color:#00ff00"><div class="dash-label">Total Active</div><div id="statPaid" class="dash-val">0</div></div>
-        <div class="dash-card" style="border-top-color:#f1c40f"><div class="dash-label">Expiring Today</div><div id="statExpToday" class="dash-val">0</div></div>
-        <div class="dash-card" style="border-top-color:#ff003c"><div class="dash-label">Expired</div><div id="statOverdue" class="dash-val">0</div></div>
+        <div class="dash-card dash-click" style="border-top-color:#00ff00" onclick="dashboardFilter('Active')"><div class="dash-label">Total Active</div><div id="statPaid" class="dash-val">0</div></div>
+        <div class="dash-card dash-click" style="border-top-color:#f1c40f" onclick="dashboardFilter('ExpiringToday')"><div class="dash-label">Expiring Today</div><div id="statExpToday" class="dash-val">0</div></div>
+        <div class="dash-card dash-click" style="border-top-color:#ff003c" onclick="dashboardFilter('Expired')"><div class="dash-label">Expired</div><div id="statOverdue" class="dash-val">0</div></div>
+    </div>
+
+
+    <!-- Monthly Joins vs Expiries Summary -->
+    <div class="dashboard-row" style="margin-bottom: 30px;">
+        <div class="dash-card monthly-summary-card">
+            <div class="monthly-summary-header">
+                <div>
+                    <div class="monthly-summary-title">Monthly Joins vs Expiries</div>
+                    <div class="monthly-summary-subtitle">Live counts from Joining Date and Expiry Date.</div>
+                </div>
+                <div class="monthly-summary-period" id="monthlySummaryPeriod">Current Month</div>
+            </div>
+            <div class="monthly-stats-grid" id="monthlyStatsGrid">
+                <div class="monthly-stat-tile">
+                    <div class="monthly-stat-kicker">This Month Joins</div>
+                    <div class="monthly-stat-value joins" id="monthlyJoinsCount">0</div>
+                    <div class="monthly-stat-meta" id="monthlyJoinsMeta">New memberships started</div>
+                </div>
+                <div class="monthly-stat-tile">
+                    <div class="monthly-stat-kicker">This Month Expiries</div>
+                    <div class="monthly-stat-value expiries" id="monthlyExpiriesCount">0</div>
+                    <div class="monthly-stat-meta" id="monthlyExpiriesMeta">Memberships ending</div>
+                </div>
+                <div class="monthly-stat-tile">
+                    <div class="monthly-stat-kicker">Net Growth</div>
+                    <div class="monthly-stat-value" id="monthlyNetCount">0</div>
+                    <div class="monthly-stat-meta" id="monthlyNetMeta">Joins minus expiries</div>
+                </div>
+                <div class="monthly-stat-tile">
+                    <div class="monthly-stat-kicker">Next 30 Days Expiring</div>
+                    <div class="monthly-stat-value expiries" id="upcomingExpiryCount">0</div>
+                    <div class="monthly-stat-meta" id="upcomingExpiryMeta">Rolling upcoming expiries</div>
+                </div>
+            </div>
+            <div class="monthly-trend-strip" id="monthlyTrendList"></div>
+            <div class="monthly-empty" id="monthlySummaryEmpty" style="display:none;">No valid Joining Date or Expiry Date records found for this sheet.</div>
+        </div>
     </div>
 
     <div class="controls">
@@ -300,6 +377,7 @@
             <option value="Today">Expiring Today</option>
             <option value="7Days">Expiring 7 Days</option>
             <option value="Expired">Already Expired</option>
+            <option value="Expired10Days">Expired (Last 10 Days)</option>
         </select>
         <select id="activeFilter" onchange="filterTable()">
             <option value="All">All Clients</option>
@@ -322,7 +400,6 @@
         <div class="profile-layout">
             <div class="info-side">
                 <form id="clientForm"><div class="form-grid" id="formInputs"></div></form>
-                <div id="modalFooter" style="margin-top:20px; display:flex; gap:10px;"></div>
             </div>
             <div class="stats-side" id="progressSide">
                 <div class="chart-grid">
@@ -381,6 +458,7 @@
                 </div>
             </div>
         </div>
+        <div id="modalFooter" class="modal-footer"></div>
     </div>
 </div>
 
@@ -400,10 +478,36 @@
 </div><!-- End App Container -->
 
 <script>
+
+    // Dashboard card click filter
+    function dashboardFilter(type) {
+        if(type === 'Active') {
+            document.getElementById('activeFilter').value = 'Active';
+            document.getElementById('expiryFilter').value = 'All';
+        } else if(type === 'ExpiringToday') {
+            document.getElementById('expiryFilter').value = 'Today';
+            document.getElementById('activeFilter').value = 'All';
+        } else if(type === 'Expired') {
+            document.getElementById('expiryFilter').value = 'Expired';
+            document.getElementById('activeFilter').value = 'All';
+        }
+        filterTable();
+    }
+    // Add pointer and hover effect for dashboard cards (in case not in CSS)
+    document.addEventListener('DOMContentLoaded', function() {
+        const style = document.createElement('style');
+        style.innerHTML = `.dash-click { cursor: pointer; transition: box-shadow 0.2s, transform 0.2s; } .dash-click:hover { box-shadow: 0 0 20px var(--neon), 0 4px 20px rgba(0,0,0,0.3); transform: scale(1.04); z-index:2; }`;
+        document.head.appendChild(style);
+    });
     const API_URL = "https://script.google.com/macros/s/AKfycbzB6q-0C8sVnqXvM6uZNmm_K89YC4-0hfOdepmPmn6EA9YykLWbGROOTPigkWUY6Ykfpg/exec";
     let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null;
     let weightChart = null, bmiChart = null, bodyFatChart = null, chestChart = null, waistChart = null, hipsChart = null;
     let shouldersChart = null, neckChart = null, upperArmChart = null, forearmChart = null, thighChart = null, calfChart = null, heartRateChart = null;
+    let currentModalState = null;
+    let isProcessingPopState = false;
+
+    let monthlyJoinsChartInstance = null;
+    let monthlyExpiriesChartInstance = null;
 
     // Loading Functions
     function showLoading(message = 'LOADING...') {
@@ -517,6 +621,122 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    function parseDashboardDate(value) {
+        if (!value) return null;
+        if (value instanceof Date && !isNaN(value.getTime())) return value;
+
+        const directDate = new Date(value);
+        if (!isNaN(directDate.getTime())) return directDate;
+
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            const parts = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+            if (parts) {
+                const day = parseInt(parts[1], 10);
+                const month = parseInt(parts[2], 10) - 1;
+                const rawYear = parseInt(parts[3], 10);
+                const year = rawYear < 100 ? 2000 + rawYear : rawYear;
+                const parsed = new Date(year, month, day);
+                if (!isNaN(parsed.getTime())) return parsed;
+            }
+        }
+
+        return null;
+    }
+
+    function updateMonthlySummary() {
+        const joinsEl = document.getElementById('monthlyJoinsCount');
+        const expiriesEl = document.getElementById('monthlyExpiriesCount');
+        const netEl = document.getElementById('monthlyNetCount');
+        const upcomingEl = document.getElementById('upcomingExpiryCount');
+        const trendListEl = document.getElementById('monthlyTrendList');
+        const emptyEl = document.getElementById('monthlySummaryEmpty');
+        const periodEl = document.getElementById('monthlySummaryPeriod');
+        const joinsMetaEl = document.getElementById('monthlyJoinsMeta');
+        const expiriesMetaEl = document.getElementById('monthlyExpiriesMeta');
+        const netMetaEl = document.getElementById('monthlyNetMeta');
+        const upcomingMetaEl = document.getElementById('upcomingExpiryMeta');
+
+        if (!joinsEl || !expiriesEl || !netEl || !upcomingEl || !trendListEl || !emptyEl || !periodEl) return;
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const nextThirtyDays = new Date(now);
+        nextThirtyDays.setDate(nextThirtyDays.getDate() + 30);
+
+        const recentMonths = [];
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(currentYear, currentMonth - i, 1);
+            recentMonths.push({
+                key: `${date.getFullYear()}-${date.getMonth()}`,
+                label: date.toLocaleString('default', { month: 'short', year: '2-digit' }),
+                joins: 0,
+                expiries: 0
+            });
+        }
+
+        let currentMonthJoins = 0;
+        let currentMonthExpiries = 0;
+        let upcomingExpiries = 0;
+        let validDateCount = 0;
+
+        masterData.forEach(client => {
+            const joinDate = parseDashboardDate(client.JoinDate);
+            const expiryDate = parseDashboardDate(client.ExpiryDate);
+
+            if (joinDate) {
+                validDateCount++;
+                if (joinDate.getMonth() === currentMonth && joinDate.getFullYear() === currentYear) {
+                    currentMonthJoins++;
+                }
+
+                const joinMonth = recentMonths.find(month => month.key === `${joinDate.getFullYear()}-${joinDate.getMonth()}`);
+                if (joinMonth) joinMonth.joins++;
+            }
+
+            if (expiryDate) {
+                validDateCount++;
+                if (expiryDate.getMonth() === currentMonth && expiryDate.getFullYear() === currentYear) {
+                    currentMonthExpiries++;
+                }
+
+                if (expiryDate >= now && expiryDate <= nextThirtyDays) {
+                    upcomingExpiries++;
+                }
+
+                const expiryMonth = recentMonths.find(month => month.key === `${expiryDate.getFullYear()}-${expiryDate.getMonth()}`);
+                if (expiryMonth) expiryMonth.expiries++;
+            }
+        });
+
+        const netGrowth = currentMonthJoins - currentMonthExpiries;
+        joinsEl.textContent = currentMonthJoins;
+        expiriesEl.textContent = currentMonthExpiries;
+        netEl.textContent = netGrowth > 0 ? `+${netGrowth}` : `${netGrowth}`;
+        upcomingEl.textContent = upcomingExpiries;
+        netEl.className = `monthly-stat-value ${netGrowth >= 0 ? 'net-positive' : 'net-negative'}`;
+        periodEl.textContent = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        joinsMetaEl.textContent = currentSheet === 'Enquiry' ? 'No join dates used in enquiry view' : 'Memberships started this month';
+        expiriesMetaEl.textContent = currentSheet === 'Enquiry' ? 'No expiry dates used in enquiry view' : 'Memberships ending this month';
+        netMetaEl.textContent = currentSheet === 'Enquiry' ? 'Net growth unavailable for enquiries' : 'Joins minus expiries this month';
+        upcomingMetaEl.textContent = currentSheet === 'Enquiry' ? 'Upcoming expiries unavailable for enquiries' : 'Active expiries due in 30 days';
+
+        trendListEl.innerHTML = recentMonths.map(month => `
+            <div class="monthly-trend-chip">
+                <div class="monthly-trend-month">${month.label}</div>
+                <div class="monthly-trend-metric monthly-trend-joins"><span>Joins</span><strong>${month.joins}</strong></div>
+                <div class="monthly-trend-metric monthly-trend-expiries"><span>Exp.</span><strong>${month.expiries}</strong></div>
+            </div>
+        `).join('');
+
+        const noData = currentSheet === 'Enquiry' || validDateCount === 0;
+        emptyEl.style.display = noData ? 'block' : 'none';
+        trendListEl.style.display = noData ? 'none' : 'grid';
+    }
+
     function generateNextClientID() {
         if (masterData.length === 0) return 'FH0001';
         
@@ -534,15 +754,80 @@
         return 'FH' + String(nextNum).padStart(4, '0');
     }
 
-    async function loadTab(sheet, el) {
+    function setActiveNavItem(sheet) {
+        document.querySelectorAll('.nav-item[data-sheet]').forEach(item => {
+            item.classList.toggle('active', item.dataset.sheet === sheet);
+        });
+    }
+
+    function renderModalFooter(actions) {
+        document.getElementById('modalFooter').innerHTML = actions.map(action => {
+            const extraClass = action.secondary ? ' btn-secondary' : '';
+            return `<button class="btn-add${extraClass}" onclick="${action.onclick}">${action.label}</button>`;
+        }).join('');
+    }
+
+    function buildHistoryState() {
+        return {
+            screen: 'app',
+            sheet: currentSheet,
+            modalOpen: document.getElementById('modal').classList.contains('show'),
+            modalState: currentModalState
+        };
+    }
+
+    function syncBrowserHistory(replace = false) {
+        if (sessionStorage.getItem('fitHiveAuth') !== 'true' || isProcessingPopState) return;
+        const method = replace ? 'replaceState' : 'pushState';
+        history[method](buildHistoryState(), '', window.location.pathname);
+    }
+
+    function findClientIndexByRowNumber(rowNumber) {
+        let index = filteredData.findIndex(client => String(client.rowNumber) === String(rowNumber));
+        if (index === -1) {
+            filteredData = [...masterData];
+            index = filteredData.findIndex(client => String(client.rowNumber) === String(rowNumber));
+        }
+        return index;
+    }
+
+    async function restoreModalFromState(modalState) {
+        if (!modalState) {
+            toggleModal(false, { skipHistory: true, force: true });
+            return;
+        }
+
+        if (modalState.mode === 'add') {
+            openAddModal({ skipHistory: true });
+            return;
+        }
+
+        if (modalState.rowNumber != null) {
+            const index = findClientIndexByRowNumber(modalState.rowNumber);
+            if (index === -1) {
+                toggleModal(false, { skipHistory: true, force: true });
+                return;
+            }
+
+            viewDetails(index, { skipHistory: true });
+            if (modalState.mode === 'edit') {
+                enableEdit(index, { skipHistory: true });
+            }
+        }
+    }
+
+    async function loadTab(sheet, el, options = {}) {
         showLoading(`LOADING ${sheet.toUpperCase()}...`);
         try {
             currentSheet = sheet;
-            if(el) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); el.classList.add('active'); }
+            setActiveNavItem(sheet);
             const res = await fetch(`${API_URL}?sheet=${currentSheet}`);
             masterData = await res.json();
             updateDashboard();
             filterTable();
+            if (!options.skipHistory) {
+                syncBrowserHistory(!!options.replaceHistory);
+            }
         } catch (error) {
             console.error('Error loading data:', error);
             alert('Failed to load data. Please try again.');
@@ -573,6 +858,8 @@
             document.getElementById('statExpToday').innerText = expToday;
             document.getElementById('statOverdue').innerText = overdue;
         }
+
+        updateMonthlySummary();
     }
 
     function resetFilters() {
@@ -590,6 +877,7 @@
         const activeSel = document.getElementById('activeFilter').value;
         const today = new Date(); today.setHours(0,0,0,0);
         const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const tenDaysAgo = new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000);
 
         filteredData = masterData.filter(c => {
             const matchName = (c.FullName || "").toLowerCase().includes(query);
@@ -602,6 +890,7 @@
             if(expirySel === "Today") matchExpiry = toISODate(exp) === toISODate(today);
             else if(expirySel === "Expired") matchExpiry = exp < today;
             else if(expirySel === "7Days") matchExpiry = exp > today && exp <= nextWeek;
+            else if(expirySel === "Expired10Days") matchExpiry = exp < today && exp >= tenDaysAgo;
 
             let matchActive = true;
             if(activeSel === "Active") {
@@ -649,9 +938,10 @@
         }).join('');
     }
 
-    function viewDetails(idx) {
+    function viewDetails(idx, options = {}) {
         const c = filteredData[idx];
         currentEditRow = c.rowNumber;
+        currentModalState = { mode: 'view', rowNumber: c.rowNumber };
         
         if (currentSheet === "Enquiry") {
             document.getElementById('profileHeader').innerHTML = `<h1 style="margin:0; font-family:Orbitron;">${c.Name || 'N/A'}</h1>`;
@@ -683,9 +973,15 @@
         }).join('');
 
         if (currentSheet === "Enquiry") {
-            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+            renderModalFooter([
+                { label: 'Close', onclick: 'toggleModal(false)', secondary: true },
+                { label: 'Edit', onclick: `enableEdit(${idx})` }
+            ]);
         } else {
-            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="enableEdit(${idx})">Edit Client</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+            renderModalFooter([
+                { label: 'Close', onclick: 'toggleModal(false)', secondary: true },
+                { label: 'Edit Client', onclick: `enableEdit(${idx})` }
+            ]);
         }
         
         // Only render progress charts for PT Tracker
@@ -696,7 +992,7 @@
             document.getElementById('progressSide').style.display = 'none';
         }
         
-        toggleModal(true);
+        toggleModal(true, options);
     }
 
     function renderProgress(c) {
@@ -891,134 +1187,10 @@
         document.querySelector('.chart-grid').insertAdjacentHTML('afterend', progressPhotosHTML);
     }
 
-    function enableEdit(idx) {
+    function enableEdit(idx, options = {}) {
         const c = filteredData[idx];
-        
-        if (currentSheet === "Enquiry") {
-            // Enquiry sheet simple form
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            }).join('');
-            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('edit')">Save Changes</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
-        } else if (currentSheet === "PT Tracker") {
-            // Group PT measurements by time period in table format
-            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
-            const measurements = [
-                {name: "Weight", unit: "kg"},
-                {name: "BMI", unit: ""},
-                {name: "Body Fat %", unit: "%"},
-                {name: "Chest", unit: "cm"},
-                {name: "Waist", unit: "cm"},
-                {name: "Hips", unit: "cm"},
-                {name: "Shoulders", unit: "cm"},
-                {name: "Neck", unit: "cm"},
-                {name: "Upper Arm", unit: "cm"},
-                {name: "Forearm", unit: "cm"},
-                {name: "Thigh", unit: "cm"},
-                {name: "Calf", unit: "cm"},
-                {name: "Resting Heart Rate", unit: "bpm"}
-            ];
-            const timePeriods = ["Day 1", "Week 1", "Week 4", "Week 8", "Week 12"];
-            
-            let html = '<div style="display:grid; grid-template-columns: 1fr; gap:20px;">';
-            
-            // Basic Info Section
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
-            basicFields.forEach(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            });
-            html += '</div></div>';
-            
-            // Height (single field)
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
-            html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", c.Height)}</div></div>`;
-            
-            // Progress Photos Upload Section
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">📸 Progress Photos</h3>';
-            html += '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px;">';
-            ["Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"].forEach(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            });
-            html += '</div></div>';
-            
-            // Progress Tracking Table
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
-            html += '<table style="width:100%; border-collapse:collapse; background:#0a0a0a; border:1px solid #222; table-layout: auto; min-width: 800px;">';
-            
-            // Table Header
-            html += '<thead><tr style="background:#000; border-bottom:2px solid var(--neon);">';
-            html += '<th style="padding:6px 4px; text-align:left; color:var(--neon); font-size:0.55rem; text-transform:uppercase; border-right:1px solid #222; white-space:nowrap;">Measurement</th>';
-            timePeriods.forEach(period => {
-                html += `<th style="padding:6px 4px; text-align:center; color:var(--neon); font-size:0.55rem; text-transform:uppercase; border-right:1px solid #222; white-space:nowrap;">${period}</th>`;
-            });
-            html += '</tr></thead>';
-            
-            // Table Body
-            html += '<tbody>';
-            measurements.forEach((m, idx) => {
-                html += `<tr style="border-bottom:1px solid #222; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">`;
-                html += `<td style="padding:6px 4px; color:#fff; font-size:0.65rem; border-right:1px solid #222; white-space:nowrap;">${m.name} ${m.unit ? '(' + m.unit + ')' : ''}</td>`;
-                
-                timePeriods.forEach(period => {
-                    const fieldName = `${m.name} ${period}`;
-                    const k = fieldName.replace(/[^a-zA-Z0-9]/g, '');
-                    html += `<td style="padding:3px; border-right:1px solid #222;"><input type="text" name="${k}" value="${c[k] || ''}" style="width:70px; min-width:70px; border:none; background:#181818; color:#fff; padding:4px; border-radius:3px; text-align:center; font-size:0.7rem;"></td>`;
-                });
-                
-                html += '</tr>';
-            });
-            html += '</tbody></table></div>';
-            
-            // Performance Notes
-            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Notes</h3>';
-            html += `<div class="field-box"><label class="label-text">Performance Notes</label>${getInputElement("Performance Notes", c.PerformanceNotes)}</div></div>`;
-            
-            html += '</div>';
-            document.getElementById('formInputs').innerHTML = html;
-        } else {
-            // Regular Tracker - standard grid layout
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
-                const k = h.replace(/[^a-zA-Z0-9]/g, '');
-                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, c[k])}</div>`;
-            }).join('');
-        }
-        
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('edit')">Save Changes</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
-    }
-
-    async function submitData(action) {
-        if(!confirm("Update database?")) return;
-        
-        showLoading(action === 'add' ? 'ADDING CLIENT...' : 'UPDATING CLIENT...');
-        
-        try {
-            const formData = new FormData(document.getElementById('clientForm'));
-            const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
-            const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
-            if(action === 'edit') params.append("rowNumber", currentEditRow);
-            
-            toggleModal(false);
-            
-            await fetch(`${API_URL}?${params.toString()}`, { method: 'POST' });
-            
-            // Show success message briefly
-            showLoading('CHANGES SAVED! REFRESHING...');
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            await loadTab(currentSheet);
-        } catch (error) {
-            console.error('Error saving data:', error);
-            alert('Failed to save changes. Please try again.');
-            hideLoading();
-        }
-    }
-
-    function openAddModal() {
-        document.getElementById('profileHeader').innerHTML = `<h1>${currentSheet === 'Enquiry' ? 'ADD ENQUIRY' : 'ADD CLIENT'}</h1>`;
-        const nextClientID = generateNextClientID();
+        currentModalState = { mode: 'edit', rowNumber: c.rowNumber };
+        syncBrowserHistory(true);
         
         if (currentSheet === "Enquiry") {
             // Enquiry sheet simple form
@@ -1026,7 +1198,10 @@
                 const fieldValue = '';
                 return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
             }).join('');
-            document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Submit Enquiry</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
+            renderModalFooter([
+                { label: 'Close', onclick: 'toggleModal(false)', secondary: true },
+                { label: 'Save Changes', onclick: `submitData('edit')` }
+            ]);
             document.getElementById('progressSide').style.display = 'none';
         } else if (currentSheet === "PT Tracker") {
             // Group PT measurements by time period in table format
@@ -1112,8 +1287,144 @@
             }).join('');
         }
         
-        document.getElementById('modalFooter').innerHTML = `<button class="btn-add" onclick="submitData('add')">Register</button><button class="btn-add" style="background:#222" onclick="toggleModal(false)">Close</button>`;
-        toggleModal(true);
+        renderModalFooter([
+            { label: 'Close', onclick: 'toggleModal(false)', secondary: true },
+            { label: 'Save Changes', onclick: `submitData('edit')` }
+        ]);
+    }
+
+    async function submitData(action) {
+        if(!confirm("Update database?")) return;
+        
+        showLoading(action === 'add' ? 'ADDING CLIENT...' : 'UPDATING CLIENT...');
+        
+        try {
+            const formData = new FormData(document.getElementById('clientForm'));
+            const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
+            const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
+            if(action === 'edit') params.append("rowNumber", currentEditRow);
+            
+            toggleModal(false);
+            
+            await fetch(`${API_URL}?${params.toString()}`, { method: 'POST' });
+            
+            // Show success message briefly
+            showLoading('CHANGES SAVED! REFRESHING...');
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            await loadTab(currentSheet);
+        } catch (error) {
+            console.error('Error saving data:', error);
+            alert('Failed to save changes. Please try again.');
+            hideLoading();
+        }
+    }
+
+    function openAddModal(options = {}) {
+        document.getElementById('profileHeader').innerHTML = `<h1>${currentSheet === 'Enquiry' ? 'ADD ENQUIRY' : 'ADD CLIENT'}</h1>`;
+        const nextClientID = generateNextClientID();
+        currentModalState = { mode: 'add' };
+        
+        if (currentSheet === "Enquiry") {
+            // Enquiry sheet simple form
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+                const fieldValue = '';
+                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
+            }).join('');
+            renderModalFooter([
+                { label: 'Close', onclick: 'toggleModal(false)', secondary: true },
+                { label: 'Submit Enquiry', onclick: `submitData('add')` }
+            ]);
+            document.getElementById('progressSide').style.display = 'none';
+        } else if (currentSheet === "PT Tracker") {
+            // Group PT measurements by time period in table format
+            const basicFields = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Email", "Join Date", "Membership Duration (Months)", "Expiry Date", "Payment Status", "Amount Pending", "Payment Method", "Age", "Gender", "Goal", "Medical Notes", "Injuries"];
+            const measurements = [
+                {name: "Weight", unit: "kg"},
+                {name: "BMI", unit: ""},
+                {name: "Body Fat %", unit: "%"},
+                {name: "Chest", unit: "cm"},
+                {name: "Waist", unit: "cm"},
+                {name: "Hips", unit: "cm"},
+                {name: "Shoulders", unit: "cm"},
+                {name: "Neck", unit: "cm"},
+                {name: "Upper Arm", unit: "cm"},
+                {name: "Forearm", unit: "cm"},
+                {name: "Thigh", unit: "cm"},
+                {name: "Calf", unit: "cm"},
+                {name: "Resting Heart Rate", unit: "bpm"}
+            ];
+            const timePeriods = ["Day 1", "Week 1", "Week 4", "Week 8", "Week 12"];
+            
+            let html = '<div style="display:grid; grid-template-columns: 1fr; gap:20px;">';
+            
+            // Basic Info Section
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
+            basicFields.forEach(h => {
+                const fieldValue = h === 'Client ID' ? nextClientID : '';
+                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
+            });
+            html += '</div></div>';
+            
+            // Height (single field)
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Height</h3>';
+            html += `<div class="field-box"><label class="label-text">Height (cm)</label>${getInputElement("Height", '')}</div></div>`;
+            
+            // Progress Photos Upload Section
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">📸 Progress Photos</h3>';
+            html += '<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:15px;">';
+            ["Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"].forEach(h => {
+                html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, '')}</div>`;
+            });
+            html += '</div></div>';
+            
+            // Progress Tracking Table
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Progress Tracking</h3>';
+            html += '<div style="overflow-x: auto;"><table style="width:100%; border-collapse:collapse; background:#0a0a0a; border:1px solid #222;">';
+            
+            // Table Header
+            html += '<thead><tr style="background:#000; border-bottom:2px solid var(--neon);">';
+            html += '<th style="padding:12px; text-align:left; color:var(--neon); font-size:0.65rem; text-transform:uppercase; border-right:1px solid #222; position:sticky; left:0; background:#000;">Measurement</th>';
+            timePeriods.forEach(period => {
+                html += `<th style="padding:12px; text-align:center; color:var(--neon); font-size:0.65rem; text-transform:uppercase; border-right:1px solid #222;">${period}</th>`;
+            });
+            html += '</tr></thead>';
+            
+            // Table Body
+            html += '<tbody>';
+            measurements.forEach((m, idx) => {
+                html += `<tr style="border-bottom:1px solid #222; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">`;
+                html += `<td style="padding:10px; color:#fff; font-size:0.75rem; border-right:1px solid #222; position:sticky; left:0; ${idx % 2 === 0 ? 'background:#0a0a0a;' : 'background:#050505;'}">${m.name} ${m.unit ? '(' + m.unit + ')' : ''}</td>`;
+                
+                timePeriods.forEach(period => {
+                    const fieldName = `${m.name} ${period}`;
+                    const k = fieldName.replace(/[^a-zA-Z0-9]/g, '');
+                    html += `<td style="padding:5px; border-right:1px solid #222;"><input type="text" name="${k}" value="" placeholder="-" style="width:100%; border:none; background:#181818; color:#fff; padding:6px; border-radius:4px; text-align:center;"></td>`;
+                });
+                
+                html += '</tr>';
+            });
+            html += '</tbody></table></div></div>';
+            
+            // Performance Notes
+            html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Notes</h3>';
+            html += `<div class="field-box"><label class="label-text">Performance Notes</label>${getInputElement("Performance Notes", '')}</div></div>`;
+            
+            html += '</div>';
+            document.getElementById('formInputs').innerHTML = html;
+        } else {
+            // Regular Tracker - standard grid layout
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+                const fieldValue = h === 'Client ID' ? nextClientID : '';
+                return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
+            }).join('');
+        }
+        
+        renderModalFooter([
+            { label: 'Close', onclick: 'toggleModal(false)', secondary: true },
+            { label: currentSheet === 'Enquiry' ? 'Submit Enquiry' : 'Register', onclick: `submitData('add')` }
+        ]);
+        toggleModal(true, options);
     }
 
     let uploadedPhotoData = null;
@@ -1287,14 +1598,14 @@
                 uploadLabel.textContent = originalText;
                 uploadLabel.style.color = '';
                 alert('Upload failed: ' + (result.error || 'Unknown error'));
-                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
                 hideLoading();
             }
         } catch (error) {
             uploadLabel.textContent = originalText;
             uploadLabel.style.color = '';
             alert('Upload error: ' + error.message);
-            photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+            photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
             hideLoading();
         }
     }
@@ -1371,14 +1682,14 @@
                     uploadLabel.textContent = originalText;
                     uploadLabel.style.color = '';
                     alert('Upload failed: ' + (result.error || 'Unknown error'));
-                    photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                    photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
                     hideLoading();
                 }
             } catch (error) {
                 uploadLabel.textContent = originalText;
                 uploadLabel.style.color = '';
                 alert('Upload error: ' + error.message);
-                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+                photoPreview.src = 'https://cdn-icons-png.flaticon.com/512/3342/3342137.png';
                 hideLoading();
             }
         };
@@ -1453,7 +1764,27 @@
         reader.readAsDataURL(file);
     }
 
-    function toggleModal(s) { document.getElementById('modal').classList.toggle('show', s); }
+    function toggleModal(s, options = {}) {
+        const modal = document.getElementById('modal');
+        const isOpen = modal.classList.contains('show');
+
+        if (!s) {
+            if (!isOpen && !options.force) return;
+            if (!options.skipHistory && history.state && history.state.modalOpen) {
+                history.back();
+                return;
+            }
+
+            modal.classList.remove('show');
+            if (!options.preserveModalState) currentModalState = null;
+            return;
+        }
+
+        modal.classList.add('show');
+        if (!options.skipHistory) {
+            syncBrowserHistory(false);
+        }
+    }
     
     // Login Functions
     function togglePassword() {
@@ -1522,7 +1853,7 @@
     function showApp() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'flex';
-        loadTab('Regular Tracker');
+        loadTab('Regular Tracker', null, { replaceHistory: true });
     }
     
     function logout() {
@@ -1539,6 +1870,29 @@
             showApp();
         }
     }
+
+    window.addEventListener('popstate', async (event) => {
+        if (sessionStorage.getItem('fitHiveAuth') !== 'true') return;
+
+        const state = event.state || { sheet: 'Regular Tracker', modalOpen: false, modalState: null };
+        isProcessingPopState = true;
+
+        try {
+            if (state.sheet && state.sheet !== currentSheet) {
+                await loadTab(state.sheet, null, { skipHistory: true });
+            } else if (state.sheet) {
+                setActiveNavItem(state.sheet);
+            }
+
+            if (state.modalOpen) {
+                await restoreModalFromState(state.modalState);
+            } else {
+                toggleModal(false, { skipHistory: true, force: true });
+            }
+        } finally {
+            isProcessingPopState = false;
+        }
+    });
     
     window.onload = () => checkAuth();
 </script>
