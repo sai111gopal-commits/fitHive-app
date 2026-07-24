@@ -25,6 +25,9 @@
         .nav-item { padding: 12px 15px; margin-bottom: 10px; border: 1px solid #222; border-radius: 8px; cursor: pointer; transition: var(--transition); font-size: 0.9rem; font-weight: 500; text-align: center; line-height: 1.4; animation: slideInLeft 0.5s ease-out; }
         .nav-item.active { border-color: var(--neon-hot); color: #fff; background: linear-gradient(135deg, rgba(252, 0, 0, 0.24), rgba(255, 255, 255, 0.08)); box-shadow: inset 0 0 16px rgba(252, 0, 0, 0.36), 0 0 20px rgba(252, 0, 0, 0.24); }
         .nav-item:hover { background: linear-gradient(135deg, rgba(252, 0, 0, 0.24), rgba(255, 255, 255, 0.06)); transform: translateX(5px); border-color: rgba(252, 0, 0, 0.78); box-shadow: 0 0 14px rgba(252, 0, 0, 0.22); }
+        .role-badge { margin: -6px 0 14px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.06); color: #e6e6e6; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; text-align: center; }
+        .role-badge.admin { border-color: rgba(255, 255, 255, 0.25); background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(120, 120, 120, 0.08)); color: #f3f3f3; }
+        .role-badge.trainer { border-color: rgba(252, 0, 0, 0.55); background: linear-gradient(135deg, rgba(252, 0, 0, 0.22), rgba(255, 255, 255, 0.08)); color: #fff; box-shadow: inset 0 0 12px rgba(252, 0, 0, 0.22), 0 0 14px rgba(252, 0, 0, 0.16); }
 
         .main { flex: 1; padding: 25px; overflow-y: auto; overflow-x: hidden; min-width: 0; width: 100%; box-sizing: border-box; animation: fadeIn 0.6s ease-out; position: relative; isolation: isolate; }
         .main::before { content: ''; position: absolute; width: 360px; height: 360px; right: -140px; top: -120px; background: radial-gradient(circle, rgba(252, 0, 0, 0.14) 0%, rgba(252, 0, 0, 0.06) 34%, transparent 72%); filter: blur(10px); z-index: -1; pointer-events: none; animation: ambientDrift 13s ease-in-out infinite; }
@@ -427,6 +430,7 @@
     <div class="logo">
         <span class="logo-main"><span class="fit-text">FIT</span><span class="dot">.</span><span class="hive-text">HIVE</span></span>
     </div>
+    <div id="roleBadge" class="role-badge admin">Admin Mode</div>
     <div class="nav-item active" data-sheet="Regular Tracker" onclick="loadTab('Regular Tracker', this)">Regular Tracker</div>
     <div class="nav-item" data-sheet="PT Tracker" onclick="loadTab('PT Tracker', this)">PT Tracker</div>
     <div class="nav-item" data-sheet="Enquiry" onclick="loadTab('Enquiry', this)">Enquiry</div>
@@ -615,6 +619,8 @@
     });
     const API_URL = "https://script.google.com/macros/s/AKfycbzB6q-0C8sVnqXvM6uZNmm_K89YC4-0hfOdepmPmn6EA9YykLWbGROOTPigkWUY6Ykfpg/exec";
     let masterData = [], filteredData = [], currentSheet = "Regular Tracker", currentEditRow = null;
+    let currentUserRole = 'admin';
+    let currentUsername = '';
     let weightChart = null, bmiChart = null, bodyFatChart = null, chestChart = null, waistChart = null, hipsChart = null;
     let shouldersChart = null, neckChart = null, upperArmChart = null, forearmChart = null, thighChart = null, calfChart = null, heartRateChart = null;
     let currentModalState = null;
@@ -622,6 +628,87 @@
 
     let monthlyJoinsChartInstance = null;
     let monthlyExpiriesChartInstance = null;
+
+    function normalizeUserRole(role) {
+        const normalized = String(role || '').trim().toLowerCase();
+        return normalized === 'trainer' ? 'trainer' : 'admin';
+    }
+
+    function getRoleApiContext() {
+        return {
+            userRole: currentUserRole,
+            username: currentUsername || sessionStorage.getItem('fitHiveUser') || ''
+        };
+    }
+
+    function buildApiUrl(params = {}) {
+        const merged = { ...params, ...getRoleApiContext() };
+        const search = new URLSearchParams(merged);
+        return `${API_URL}?${search.toString()}`;
+    }
+
+    function sanitizeRecordForTrainer(record, sheet) {
+        return record;
+    }
+
+    function sanitizeDataForCurrentRole(data, sheet) {
+        return data;
+    }
+
+    function isTrainerRole() {
+        return currentUserRole === 'trainer';
+    }
+
+    function isTrainerHiddenField(fieldName) {
+        return fieldName === 'Phone' || fieldName === 'Phone Number' || fieldName === 'Email';
+    }
+
+    function getTableDisplayKeys() {
+        const removeSensitive = keys => keys.filter(h => !isTrainerHiddenField(h));
+        if (currentSheet === "Enquiry") {
+            const keys = ["Name", "Expected joining", "Phone Number", "Preferred pakage"];
+            return isTrainerRole() ? removeSensitive(keys) : keys;
+        }
+        if (currentSheet === "PT Tracker") {
+            const keys = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Expiry Date", "Days Left", "Amount Pending", "Payment Status"];
+            return isTrainerRole() ? removeSensitive(keys) : keys;
+        }
+        const keys = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Expiry Date", "Days Left", "Amount Pending", "Payment Status"];
+        return isTrainerRole() ? removeSensitive(keys) : keys;
+    }
+
+    function getVisibleHeadersForDetails() {
+        const visibleHeaders = headers[currentSheet] || [];
+        if (!isTrainerRole()) return visibleHeaders;
+        return visibleHeaders.filter(h => !isTrainerHiddenField(h));
+    }
+
+    function applyRoleBasedUI() {
+        const enquiryNavItem = document.querySelector('.nav-item[data-sheet="Enquiry"]');
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const roleBadge = document.getElementById('roleBadge');
+
+        if (isTrainerRole()) {
+            if (enquiryNavItem) enquiryNavItem.style.display = '';
+            if (searchInput) searchInput.placeholder = 'Search by name or slot...';
+            if (statusFilter) statusFilter.style.display = '';
+            if (roleBadge) {
+                roleBadge.classList.remove('admin');
+                roleBadge.classList.add('trainer');
+                roleBadge.textContent = 'Trainer Mode';
+            }
+        } else {
+            if (enquiryNavItem) enquiryNavItem.style.display = '';
+            if (searchInput) searchInput.placeholder = 'Search by name or phone number...';
+            if (statusFilter) statusFilter.style.display = '';
+            if (roleBadge) {
+                roleBadge.classList.remove('trainer');
+                roleBadge.classList.add('admin');
+                roleBadge.textContent = 'Admin Mode';
+            }
+        }
+    }
 
     // Loading Functions
     function showLoading(message = 'LOADING...') {
@@ -665,8 +752,16 @@
         "Progress Photo Day 1", "Progress Photo Week 4", "Progress Photo Week 8", "Progress Photo Week 12"]
     };
 
+    // Local-only fallback users for UI demo checks when Login sheet does not yet include trainer accounts.
+    const localDemoUsers = [
+        { Username: 'trainer_demo', Password: 'demo123', Role: 'trainer', IsDemo: true }
+    ];
+
     function getInputElement(h, value) {
         const k = h.replace(/[^a-zA-Z0-9]/g, '');
+        const isEditMode = currentModalState && currentModalState.mode === 'edit';
+        const trainerReadOnly = isTrainerRole() && isEditMode && (h === 'Email');
+        const readonlyAttrs = trainerReadOnly ? 'readonly title="Trainer cannot edit this field" style="width:100%; border:none; background:#111; color:#888; padding:4px; cursor:not-allowed;"' : 'style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"';
         if (h === "Client ID") {
             // Client ID is read-only when adding new client (no value provided)
             return `<input type="text" name="${k}" id="ClientID" value="${value || ''}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;" ${!value ? 'readonly' : ''}>`;
@@ -700,7 +795,7 @@
         } else if (h === "Payment Method") {
             return `<select name="${k}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;"><option value="Cash" ${value === 'Cash' ? 'selected' : ''}>Cash</option><option value="Card" ${value === 'Card' ? 'selected' : ''}>Card</option><option value="Online" ${value === 'Online' ? 'selected' : ''}>Online</option></select>`;
         } else {
-            return `<input type="text" name="${k}" value="${value || ''}" style="width:100%; border:none; background:#181818; color:#fff; padding:4px;">`;
+            return `<input type="text" name="${k}" value="${value || ''}" ${readonlyAttrs}>`;
         }
     }
 
@@ -935,8 +1030,9 @@
         try {
             currentSheet = sheet;
             setActiveNavItem(sheet);
-            const res = await fetch(`${API_URL}?sheet=${currentSheet}`);
-            masterData = await res.json();
+            const res = await fetch(buildApiUrl({ sheet: currentSheet }));
+            const serverData = await res.json();
+            masterData = sanitizeDataForCurrentRole(serverData, currentSheet);
             updateDashboard();
             filterTable();
             if (!options.skipHistory) {
@@ -1000,7 +1096,8 @@
         filteredData = masterData.filter(c => {
             const matchName = (c.FullName || "").toLowerCase().includes(query);
             const matchPhone = String(c.Phone || "").toLowerCase().includes(query);
-            const matchSearch = matchName || matchPhone;
+            const matchSlot = String(c.TrainingSlot || "").toLowerCase().includes(query);
+            const matchSearch = isTrainerRole() ? (matchName || matchSlot) : (matchName || matchPhone);
             const matchStatus = (statusSel === "All") || (c.PaymentStatus === statusSel);
             const exp = new Date(c.ExpiryDate); exp.setHours(0,0,0,0);
             
@@ -1022,14 +1119,7 @@
 
     function renderTable(data) {
         const today = new Date(); today.setHours(0,0,0,0);
-        let displayKeys;
-        if (currentSheet === "Enquiry") {
-            displayKeys = ["Name", "Expected joining", "Phone Number", "Preferred pakage"];
-        } else if (currentSheet === "PT Tracker") {
-            displayKeys = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Expiry Date", "Days Left", "Amount Pending", "Payment Status"];
-        } else {
-            displayKeys = ["Client ID", "Photo Link", "Full Name", "Training Slot", "Phone", "Expiry Date", "Days Left", "Amount Pending", "Payment Status"];
-        }
+        const displayKeys = getTableDisplayKeys();
 
         document.getElementById('tableHead').innerHTML = displayKeys.map(h => `<th>${h}</th>`).join('');
         document.getElementById('tableBody').innerHTML = data.map((row, idx) => {
@@ -1075,10 +1165,18 @@
                 <span>ID: ${c.ClientID} ${c.TrainingSlot ? '| Slot: '+c.TrainingSlot : ''}</span></div>`;
         }
 
-        document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+        document.getElementById('formInputs').innerHTML = getVisibleHeadersForDetails().map(h => {
             const k = h.replace(/[^a-zA-Z0-9]/g, '');
             let displayValue = c[k] || '-';
             if (h === "Join Date" || h === "Expiry Date") displayValue = toISODate(c[k]) || '-';
+            if (h === "Days Left") {
+                const exp = new Date(c.ExpiryDate); exp.setHours(0,0,0,0);
+                const today = new Date(); today.setHours(0,0,0,0);
+                const diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+                if (diff < 0) displayValue = 'Expired';
+                else if (diff === 0) displayValue = 'Ends Today';
+                else displayValue = `${diff} Days Left`;
+            }
             // Skip progress photo fields in regular field list for PT Tracker (they're shown below charts)
             if (currentSheet === "PT Tracker" && h.startsWith("Progress Photo")) {
                 return '';
@@ -1318,7 +1416,7 @@
         
         if (currentSheet === "Enquiry") {
             // Enquiry sheet simple form
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].filter(h => !(isTrainerRole() && isTrainerHiddenField(h))).map(h => {
                 const k = h.replace(/[^a-zA-Z0-9]/g, '');
                 const fieldValue = c[k] || '';
                 return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
@@ -1352,7 +1450,7 @@
             
             // Basic Info Section
             html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
-            basicFields.forEach(h => {
+            basicFields.filter(h => !(isTrainerRole() && isTrainerHiddenField(h))).forEach(h => {
                 const k = h.replace(/[^a-zA-Z0-9]/g, '');
                 const fieldValue = c[k] || '';
                 html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
@@ -1408,7 +1506,7 @@
             document.getElementById('formInputs').innerHTML = html;
         } else {
             // Regular Tracker - standard grid layout
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].filter(h => !(isTrainerRole() && isTrainerHiddenField(h))).map(h => {
                 const k = h.replace(/[^a-zA-Z0-9]/g, '');
                 const fieldValue = c[k] || '';
                 return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
@@ -1429,7 +1527,26 @@
         try {
             const formData = new FormData(document.getElementById('clientForm'));
             const rowValues = headers[currentSheet].map(h => formData.get(h.replace(/[^a-zA-Z0-9]/g, '')) || "");
-            const params = new URLSearchParams({ action, sheetName: currentSheet, data: JSON.stringify(rowValues) });
+
+            // When trainer cannot see certain fields, preserve original values on edit.
+            if (isTrainerRole() && action === 'edit') {
+                const originalClient = masterData.find(client => String(client.rowNumber) === String(currentEditRow));
+                if (originalClient) {
+                    headers[currentSheet].forEach((header, index) => {
+                        if (isTrainerHiddenField(header)) {
+                            const key = header.replace(/[^a-zA-Z0-9]/g, '');
+                            rowValues[index] = originalClient[key] || "";
+                        }
+                    });
+                }
+            }
+
+            const params = new URLSearchParams({
+                action,
+                sheetName: currentSheet,
+                data: JSON.stringify(rowValues),
+                ...getRoleApiContext()
+            });
             if(action === 'edit') params.append("rowNumber", currentEditRow);
             
             toggleModal(false);
@@ -1455,7 +1572,7 @@
         
         if (currentSheet === "Enquiry") {
             // Enquiry sheet simple form
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].filter(h => !(isTrainerRole() && isTrainerHiddenField(h))).map(h => {
                 const fieldValue = '';
                 return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
             }).join('');
@@ -1488,7 +1605,7 @@
             
             // Basic Info Section
             html += '<div><h3 style="color:var(--neon); font-size:0.65rem; margin:0 0 10px 0; text-transform:uppercase;">Basic Information</h3><div class="form-grid">';
-            basicFields.forEach(h => {
+            basicFields.filter(h => !(isTrainerRole() && isTrainerHiddenField(h))).forEach(h => {
                 const fieldValue = h === 'Client ID' ? nextClientID : '';
                 html += `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
             });
@@ -1542,7 +1659,7 @@
             document.getElementById('formInputs').innerHTML = html;
         } else {
             // Regular Tracker - standard grid layout
-            document.getElementById('formInputs').innerHTML = headers[currentSheet].map(h => {
+            document.getElementById('formInputs').innerHTML = headers[currentSheet].filter(h => !(isTrainerRole() && isTrainerHiddenField(h))).map(h => {
                 const fieldValue = h === 'Client ID' ? nextClientID : '';
                 return `<div class="field-box"><label class="label-text">${h}</label>${getInputElement(h, fieldValue)}</div>`;
             }).join('');
@@ -1709,9 +1826,9 @@
         };
         
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetch(buildApiUrl(), {
                 method: 'POST',
-                body: JSON.stringify(uploadData)
+                body: JSON.stringify({ ...uploadData, ...getRoleApiContext() })
             });
             const result = await response.json();
             
@@ -1791,9 +1908,9 @@
             photoPreview.src = e.target.result;
             
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch(buildApiUrl(), {
                     method: 'POST',
-                    body: JSON.stringify(uploadData)
+                    body: JSON.stringify({ ...uploadData, ...getRoleApiContext() })
                 });
                 const result = await response.json();
                 
@@ -1862,9 +1979,9 @@
             photoPreview.src = e.target.result;
             
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch(buildApiUrl(), {
                     method: 'POST',
-                    body: JSON.stringify(uploadData)
+                    body: JSON.stringify({ ...uploadData, ...getRoleApiContext() })
                 });
                 const result = await response.json();
                 
@@ -1947,16 +2064,25 @@
         loginBtnText.textContent = 'AUTHENTICATING...';
         errorDiv.style.display = 'none';
         
-        fetch(`${API_URL}?sheet=Login`)
+        fetch(buildApiUrl({ sheet: 'Login' }))
             .then(r => r.json())
             .then(users => {
-                const validUser = users.find(u => u.Username === username && u.Password === password);
+                const loginUsers = Array.isArray(users) ? [...users] : [];
+                if (location.protocol === 'file:') {
+                    loginUsers.push(...localDemoUsers);
+                }
+
+                const validUser = loginUsers.find(u => u.Username === username && u.Password === password);
                 
                 if (validUser) {
+                    const detectedRole = normalizeUserRole(validUser.Role || validUser.UserRole || validUser.Type || validUser.Access);
+                    currentUserRole = detectedRole;
+                    currentUsername = username;
                     loginBtnText.textContent = 'SUCCESS!';
                     setTimeout(() => {
                         sessionStorage.setItem('fitHiveAuth', 'true');
                         sessionStorage.setItem('fitHiveUser', username);
+                        sessionStorage.setItem('fitHiveRole', detectedRole);
                         showApp();
                     }, 500);
                 } else {
@@ -1981,12 +2107,16 @@
     function showApp() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'flex';
+        applyRoleBasedUI();
         loadTab('Regular Tracker', null, { replaceHistory: true });
     }
     
     function logout() {
         sessionStorage.removeItem('fitHiveAuth');
         sessionStorage.removeItem('fitHiveUser');
+        sessionStorage.removeItem('fitHiveRole');
+        currentUserRole = 'admin';
+        currentUsername = '';
         document.getElementById('loginScreen').style.display = 'flex';
         document.getElementById('appContainer').style.display = 'none';
         document.getElementById('username').value = '';
@@ -1995,6 +2125,8 @@
     
     function checkAuth() {
         if (sessionStorage.getItem('fitHiveAuth') === 'true') {
+            currentUsername = sessionStorage.getItem('fitHiveUser') || '';
+            currentUserRole = normalizeUserRole(sessionStorage.getItem('fitHiveRole') || 'admin');
             showApp();
         }
     }
